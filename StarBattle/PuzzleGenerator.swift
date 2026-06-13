@@ -1,0 +1,665 @@
+import Foundation
+
+/// Generates Star Battle puzzles with a guaranteed-unique solution.
+///
+/// The pipeline is:
+///   1. `randomSolution` — place a valid star pattern (N per row/column, no two
+///      stars touching, even diagonally) using randomized backtracking.
+///   2. `growRegions` — pair the stars and grow connected, irregular regions
+///      outward so each region contains exactly N of the solution's stars.
+///   3. `buildPuzzle` refinement loop — random region layouts almost always admit
+///      several solutions, so we repeatedly solve the layout and, while an
+///      alternate solution exists, nudge a region boundary to destroy it (see
+///      `killAlternate`). Attacking a *random* alternate avoids cycles. This
+///      converges on a layout whose only solution is the one we started with.
+enum PuzzleGenerator {
+
+    /// Async entry point so generation runs off the main actor.
+    static func generate(size: Int = 10, stars: Int = 2) async -> Puzzle {
+        await Task.detached(priority: .userInitiated) {
+            buildPuzzle(size: size, stars: stars)
+        }.value
+    }
+
+    // MARK: - Top level
+
+    static func buildPuzzle(size: Int = 10, stars: Int = 2) -> Puzzle {
+        var rng = SystemRandomNumberGenerator()
+        var fallback: Puzzle?         // any unique puzzle, even if it needs guessing
+        var nonUniqueFallback: Puzzle?
+
+        // A converging layout settles in a few dozen refinement steps, so we cap
+        // each attempt well above that and simply restart a stubborn one rather
+        // than grinding on it — restarting from a fresh layout is far cheaper than
+        // chasing a layout that keeps spawning new alternates.
+        let refinementCap = 60
+
+        for _ in 0..<90 {
+            guard let solution = randomSolution(size: size, stars: stars, rng: &rng) else {
+                continue
+            }
+            var built: [[Int]]?
+            for _ in 0..<8 {
+                if let candidate = growRegions(solution: solution, size: size, rng: &rng) {
+                    built = candidate
+                    break
+                }
+            }
+            guard var regions = built else { continue }
+            var success = false
+
+            for _ in 0..<refinementCap {
+                let solutions = findSolutions(regions: regions, size: size, stars: stars, limit: 6)
+                let alternates = solutions.filter { $0 != solution }
+                if alternates.isEmpty {
+                    success = true
+                    break
+                }
+                var killed = false
+                for alternate in alternates.shuffled(using: &rng) {
+                    if killAlternate(regions: &regions, target: solution, alternate: alternate,
+                                     size: size, rng: &rng) {
+                        killed = true
+                        break
+                    }
+                }
+                if !killed { break } // Stuck: restart with a fresh layout.
+            }
+
+            let puzzle = Puzzle(size: size, starsPerUnit: stars, regions: regions, solution: solution)
+            guard success else {
+                nonUniqueFallback = puzzle
+                continue
+            }
+            // Prefer a puzzle that can be solved by deduction (no guessing).
+            if logicallySolvable(regions: regions, size: size, stars: stars) {
+                return puzzle
+            }
+            fallback = fallback ?? puzzle
+        }
+        return fallback ?? nonUniqueFallback
+            ?? Puzzle.starters.randomElement() ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
+    }
+
+    // MARK: - Random valid solution
+
+    /// Places a valid star pattern using randomized, row-by-row backtracking.
+    static func randomSolution(size: Int, stars: Int,
+                               rng: inout SystemRandomNumberGenerator) -> Set<GridPosition>? {
+        var placement = Array(repeating: [Int](), count: size) // chosen columns per row
+        var colCount = Array(repeating: 0, count: size)
+        var prevCols: [Int] = []
+
+        // All ways to choose `stars` columns in a row that are mutually
+        // non-adjacent, respect the per-column cap, and don't touch the row above.
+        func rowCombos() -> [[Int]] {
+            var results: [[Int]] = []
+            func rec(_ start: Int, _ chosen: [Int]) {
+                if chosen.count == stars {
+                    results.append(chosen)
+                    return
+                }
+                for c in start..<size {
+                    if let last = chosen.last, c - last < 2 { continue }   // no touching within row
+                    if colCount[c] >= stars { continue }                   // column already full
+                    if prevCols.contains(where: { abs($0 - c) <= 1 }) { continue } // touches row above
+                    rec(c + 1, chosen + [c])
+                }
+            }
+            rec(0, [])
+            results.shuffle(using: &rng)
+            return results
+        }
+
+        // Prune if any column can no longer reach its required star count.
+        func feasible(afterRow row: Int) -> Bool {
+            let remainingRows = size - (row + 1)
+            for c in 0..<size where stars - colCount[c] > remainingRows {
+                return false
+            }
+            return true
+        }
+
+        func solve(_ row: Int) -> Bool {
+            if row == size {
+                return colCount.allSatisfy { $0 == stars }
+            }
+            for combo in rowCombos() {
+                for c in combo { colCount[c] += 1 }
+                placement[row] = combo
+                let savedPrev = prevCols
+                prevCols = combo
+
+                if feasible(afterRow: row) && solve(row + 1) { return true }
+
+                prevCols = savedPrev
+                for c in combo { colCount[c] -= 1 }
+                placement[row] = []
+            }
+            return false
+        }
+
+        guard solve(0) else { return nil }
+
+        var stars0 = Set<GridPosition>()
+        for r in 0..<size {
+            for c in placement[r] {
+                stars0.insert(GridPosition(row: r, col: c))
+            }
+        }
+        return stars0
+    }
+
+    // MARK: - Region growth
+
+    private static let orthogonal = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    /// Builds `size` connected regions that tile the grid, each containing exactly
+    /// `stars` of the solution's stars. Growth uses a random frontier so regions
+    /// come out irregular — which both lowers the initial solution count and leaves
+    /// more cells on region boundaries, where they can be moved during refinement.
+    ///
+    /// Each region's two stars are first joined by a carved path so the region is a
+    /// single connected shape, then the leftover cells are filled in. Returns nil if
+    /// a connecting path can't be routed (caller retries with a fresh pairing).
+    static func growRegions(solution: Set<GridPosition>, size: Int,
+                            rng: inout SystemRandomNumberGenerator) -> [[Int]]? {
+        // Pair stars greedily by nearest neighbour so each region's two stars start
+        // out close together.
+        var remaining = Array(solution)
+        remaining.shuffle(using: &rng)
+        var pairs: [(GridPosition, GridPosition)] = []
+        while remaining.count >= 2 {
+            let a = remaining.removeLast()
+            var bestIdx = 0
+            var bestDist = Int.max
+            for (i, b) in remaining.enumerated() {
+                let d = abs(a.row - b.row) + abs(a.col - b.col)
+                if d < bestDist {
+                    bestDist = d
+                    bestIdx = i
+                }
+            }
+            let b = remaining.remove(at: bestIdx)
+            pairs.append((a, b))
+        }
+
+        var region = Array(repeating: Array(repeating: -1, count: size), count: size)
+        for (id, pair) in pairs.enumerated() {
+            region[pair.0.row][pair.0.col] = id
+            region[pair.1.row][pair.1.col] = id
+        }
+
+        // Connect each pair's two stars with a path through unclaimed cells so the
+        // region is connected from the outset. Process in random order; later
+        // regions route around the paths already carved.
+        var order = Array(0..<pairs.count)
+        order.shuffle(using: &rng)
+        for id in order {
+            guard let path = connectingPath(region: region, from: pairs[id].0,
+                                            to: pairs[id].1, id: id, size: size) else {
+                return nil
+            }
+            for cell in path {
+                region[cell.row][cell.col] = id
+            }
+        }
+
+        var unassigned = 0
+        for r in 0..<size {
+            for c in 0..<size where region[r][c] == -1 { unassigned += 1 }
+        }
+        while unassigned > 0 {
+            // Every unassigned cell that touches at least one assigned cell, paired
+            // with the regions it could join.
+            var frontier: [(GridPosition, [Int])] = []
+            for r in 0..<size {
+                for c in 0..<size where region[r][c] == -1 {
+                    var adjacent: [Int] = []
+                    for (dr, dc) in orthogonal {
+                        let nr = r + dr, nc = c + dc
+                        if nr >= 0, nr < size, nc >= 0, nc < size, region[nr][nc] != -1 {
+                            adjacent.append(region[nr][nc])
+                        }
+                    }
+                    if !adjacent.isEmpty {
+                        frontier.append((GridPosition(row: r, col: c), adjacent))
+                    }
+                }
+            }
+            guard let (cell, options) = frontier.randomElement(using: &rng),
+                  let chosen = options.randomElement(using: &rng) else { break }
+            region[cell.row][cell.col] = chosen
+            unassigned -= 1
+        }
+        return region
+    }
+
+    /// Shortest path (BFS) from `from` to `to` travelling only through cells that
+    /// are unclaimed or already belong to `id`, so the path never steals another
+    /// region's cell. Returns the cells on the path, or nil if none exists.
+    private static func connectingPath(region: [[Int]], from: GridPosition, to: GridPosition,
+                                       id: Int, size: Int) -> [GridPosition]? {
+        var visited: Set<GridPosition> = [from]
+        var cameFrom: [GridPosition: GridPosition] = [:]
+        var queue = [from]
+        var head = 0
+        while head < queue.count {
+            let current = queue[head]
+            head += 1
+            if current == to {
+                var path = [current]
+                var node = current
+                while let prev = cameFrom[node] {
+                    path.append(prev)
+                    node = prev
+                }
+                return path
+            }
+            for (dr, dc) in orthogonal {
+                let n = GridPosition(row: current.row + dr, col: current.col + dc)
+                guard n.row >= 0, n.row < size, n.col >= 0, n.col < size,
+                      !visited.contains(n) else { continue }
+                let value = region[n.row][n.col]
+                if value == -1 || value == id {
+                    visited.insert(n)
+                    cameFrom[n] = current
+                    queue.append(n)
+                }
+            }
+        }
+        return nil
+    }
+
+    // MARK: - Refinement: destroy an alternate solution
+
+    /// Eliminates the alternate solution `alternate` by reassigning one cell that
+    /// holds a star in `alternate` but not in `target` to a neighbouring region.
+    ///
+    /// That cell is not a star in `target`, so moving it keeps `target` valid. But
+    /// it removes a star from `alternate`'s region, dropping that region below its
+    /// quota and making `alternate` invalid. Connectivity of the shrinking region
+    /// is preserved. Returns false if no such move is available.
+    static func killAlternate(regions: inout [[Int]], target: Set<GridPosition>,
+                              alternate: Set<GridPosition>, size: Int,
+                              rng: inout SystemRandomNumberGenerator) -> Bool {
+        var differing = Array(alternate.subtracting(target))
+        differing.shuffle(using: &rng)
+
+        for p in differing {
+            let home = regions[p.row][p.col]
+            var neighbourRegions: [Int] = []
+            for (dr, dc) in orthogonal {
+                let nr = p.row + dr, nc = p.col + dc
+                if nr >= 0, nr < size, nc >= 0, nc < size, regions[nr][nc] != home {
+                    neighbourRegions.append(regions[nr][nc])
+                }
+            }
+            if neighbourRegions.isEmpty { continue }
+            if regionStaysConnected(regions: regions, region: home, removing: p, size: size) {
+                regions[p.row][p.col] = neighbourRegions.randomElement(using: &rng)!
+                return true
+            }
+        }
+        return false
+    }
+
+    /// True if `region` would remain a single connected component after `removed`
+    /// is taken out of it.
+    private static func regionStaysConnected(regions: [[Int]], region: Int,
+                                             removing removed: GridPosition, size: Int) -> Bool {
+        var cells: Set<GridPosition> = []
+        for r in 0..<size {
+            for c in 0..<size where regions[r][c] == region {
+                let g = GridPosition(row: r, col: c)
+                if g != removed { cells.insert(g) }
+            }
+        }
+        guard let start = cells.first else { return false }
+
+        var visited: Set<GridPosition> = [start]
+        var stack = [start]
+        while let cur = stack.popLast() {
+            for (dr, dc) in orthogonal {
+                let n = GridPosition(row: cur.row + dr, col: cur.col + dc)
+                if cells.contains(n) && !visited.contains(n) {
+                    visited.insert(n)
+                    stack.append(n)
+                }
+            }
+        }
+        return visited.count == cells.count
+    }
+
+    // MARK: - Solver
+
+    /// Finds up to `limit` valid solutions for a region layout. Used both to detect
+    /// uniqueness and to retrieve alternates for refinement.
+    static func findSolutions(regions: [[Int]], size: Int, stars: Int,
+                              limit: Int) -> [Set<GridPosition>] {
+        if stars == 2 {
+            return findSolutionsTwoStar(regions: regions, size: size, limit: limit)
+        }
+        return findSolutionsGeneral(regions: regions, size: size, stars: stars, limit: limit)
+    }
+
+    /// Convenience wrapper returning just the number of solutions (capped at `limit`).
+    static func countSolutions(regions: [[Int]], size: Int, stars: Int, limit: Int) -> Int {
+        findSolutions(regions: regions, size: size, stars: stars, limit: limit).count
+    }
+
+    /// Fast, allocation-light solver specialised for the two-stars-per-unit case.
+    private static func findSolutionsTwoStar(regions: [[Int]], size: Int,
+                                             limit: Int) -> [Set<GridPosition>] {
+        var regionCount = 0
+        for row in regions {
+            for id in row where id + 1 > regionCount { regionCount = id + 1 }
+        }
+
+        // regionRowsAfter[id][r] = how many rows at index >= r contain a cell of
+        // region `id`. A region can gain at most one star per such row, so this
+        // bounds how many more of its stars are still placeable.
+        var regionRowsAfter = Array(repeating: [Int](repeating: 0, count: size + 1),
+                                    count: regionCount)
+        for id in 0..<regionCount {
+            for r in stride(from: size - 1, through: 0, by: -1) {
+                var present = false
+                for c in 0..<size where regions[r][c] == id { present = true; break }
+                regionRowsAfter[id][r] = regionRowsAfter[id][r + 1] + (present ? 1 : 0)
+            }
+        }
+
+        var colCount = [Int](repeating: 0, count: size)
+        var regionStars = [Int](repeating: 0, count: regionCount)
+        var col1 = [Int](repeating: -1, count: size)
+        var col2 = [Int](repeating: -1, count: size)
+        var prevA = -2, prevB = -2 // previous row's two columns (-2 means "none")
+        var results: [Set<GridPosition>] = []
+
+        func touchesPrev(_ c: Int) -> Bool {
+            (prevA >= 0 && abs(prevA - c) <= 1) || (prevB >= 0 && abs(prevB - c) <= 1)
+        }
+
+        // Can every column and region still reach two stars in the rows after `row`?
+        func feasible(afterRow row: Int) -> Bool {
+            let remainingRows = size - (row + 1)
+            for c in 0..<size where 2 - colCount[c] > remainingRows { return false }
+            for id in 0..<regionCount where 2 - regionStars[id] > regionRowsAfter[id][row + 1] {
+                return false
+            }
+            return true
+        }
+
+        func solve(_ row: Int) {
+            if results.count >= limit { return }
+            if row == size {
+                var s = Set<GridPosition>(minimumCapacity: size * 2)
+                for r in 0..<size {
+                    s.insert(GridPosition(row: r, col: col1[r]))
+                    s.insert(GridPosition(row: r, col: col2[r]))
+                }
+                results.append(s)
+                return
+            }
+            let savedA = prevA, savedB = prevB
+            for c1 in 0..<(size - 1) {
+                if colCount[c1] >= 2 || touchesPrev(c1) { continue }
+                let r1 = regions[row][c1]
+                if regionStars[r1] >= 2 { continue }
+                colCount[c1] += 1; regionStars[r1] += 1
+                for c2 in (c1 + 2)..<size {
+                    if colCount[c2] >= 2 || touchesPrev(c2) { continue }
+                    let r2 = regions[row][c2]
+                    if regionStars[r2] >= 2 { continue } // already reflects c1 when r2 == r1
+                    colCount[c2] += 1; regionStars[r2] += 1
+                    col1[row] = c1; col2[row] = c2
+                    prevA = c1; prevB = c2
+                    if feasible(afterRow: row) { solve(row + 1) }
+                    prevA = savedA; prevB = savedB
+                    colCount[c2] -= 1; regionStars[r2] -= 1
+                    if results.count >= limit {
+                        colCount[c1] -= 1; regionStars[r1] -= 1
+                        return
+                    }
+                }
+                colCount[c1] -= 1; regionStars[r1] -= 1
+            }
+        }
+
+        solve(0)
+        return results
+    }
+
+    /// General recursive solver for any number of stars per unit.
+    private static func findSolutionsGeneral(regions: [[Int]], size: Int, stars: Int,
+                                             limit: Int) -> [Set<GridPosition>] {
+        let regionCount = (regions.flatMap { $0 }.max() ?? -1) + 1
+        var colCount = Array(repeating: 0, count: size)
+        var regionStars = Array(repeating: 0, count: regionCount)
+        var prevCols: [Int] = []
+        var current: [GridPosition] = []
+        var results: [Set<GridPosition>] = []
+
+        func combos(row: Int) -> [[Int]] {
+            var out: [[Int]] = []
+            func rec(_ start: Int, _ chosen: [Int]) {
+                if chosen.count == stars {
+                    out.append(chosen)
+                    return
+                }
+                for c in start..<size {
+                    if let last = chosen.last, c - last < 2 { continue }
+                    if colCount[c] >= stars { continue }
+                    if prevCols.contains(where: { abs($0 - c) <= 1 }) { continue }
+                    let reg = regions[row][c]
+                    let sameRegionChosen = chosen.filter { regions[row][$0] == reg }.count
+                    if regionStars[reg] + sameRegionChosen + 1 > stars { continue }
+                    rec(c + 1, chosen + [c])
+                }
+            }
+            rec(0, [])
+            return out
+        }
+
+        func feasible(afterRow row: Int) -> Bool {
+            let remainingRows = size - (row + 1)
+            for c in 0..<size where stars - colCount[c] > remainingRows {
+                return false
+            }
+            return true
+        }
+
+        func solve(_ row: Int) {
+            if results.count >= limit { return }
+            if row == size {
+                results.append(Set(current))
+                return
+            }
+            for combo in combos(row: row) {
+                for c in combo {
+                    colCount[c] += 1
+                    regionStars[regions[row][c]] += 1
+                    current.append(GridPosition(row: row, col: c))
+                }
+                let saved = prevCols
+                prevCols = combo
+
+                if feasible(afterRow: row) { solve(row + 1) }
+
+                prevCols = saved
+                for c in combo {
+                    colCount[c] -= 1
+                    regionStars[regions[row][c]] -= 1
+                    current.removeLast()
+                }
+                if results.count >= limit { return }
+            }
+        }
+
+        solve(0)
+        return results
+    }
+
+    // MARK: - Logical solvability
+
+    /// Whether the puzzle can be solved purely by deduction — no guessing — using
+    /// mid-range human techniques:
+    ///   • a star eliminates its eight neighbours,
+    ///   • a full unit (row/column/region) eliminates its remaining cells,
+    ///   • a unit with exactly as many open cells as stars-needed fills them,
+    ///   • single-step contradiction: if assuming a star (or a blank) in a cell
+    ///     makes some unit impossible, the opposite is forced.
+    /// No nested "what-if-within-a-what-if" search is used, so it stays mid-range.
+    static func logicallySolvable(regions: [[Int]], size: Int, stars: Int) -> Bool {
+        let board = LogicBoard(regions: regions, size: size, stars: stars)
+        return board.solve()
+    }
+}
+
+/// Fast, incremental constraint engine for `logicallySolvable`. Cell state lives in
+/// a flat array; per-unit star/blank counts are kept up to date so propagation only
+/// touches the cells that change, and trial assumptions are undone via a journal
+/// rather than by copying the whole grid.
+private final class LogicBoard {
+    private let size: Int
+    private let stars: Int
+    private let regionOf: [Int]          // cell index -> region id
+    private let rowCells: [[Int]]
+    private let colCells: [[Int]]
+    private let regionCellLists: [[Int]]
+
+    private var state: [Int8]            // 0 = unknown, 1 = star, 2 = eliminated
+    private var queue: [Int] = []
+    private var journal: [(Int, Int8)] = []
+    private var ok = true
+    private var starTotal = 0
+
+    private static let kingOffsets = [(-1, -1), (-1, 0), (-1, 1), (0, -1),
+                                      (0, 1), (1, -1), (1, 0), (1, 1)]
+
+    init(regions: [[Int]], size: Int, stars: Int) {
+        self.size = size
+        self.stars = stars
+        let regionCount = (regions.flatMap { $0 }.max() ?? -1) + 1
+
+        var regionOf = [Int](repeating: 0, count: size * size)
+        var rows = Array(repeating: [Int](), count: size)
+        var cols = Array(repeating: [Int](), count: size)
+        var regs = Array(repeating: [Int](), count: regionCount)
+        for r in 0..<size {
+            for c in 0..<size {
+                let i = r * size + c
+                let id = regions[r][c]
+                regionOf[i] = id
+                rows[r].append(i)
+                cols[c].append(i)
+                regs[id].append(i)
+            }
+        }
+        self.regionOf = regionOf
+        self.rowCells = rows
+        self.colCells = cols
+        self.regionCellLists = regs
+        self.state = [Int8](repeating: 0, count: size * size)
+    }
+
+    func solve() -> Bool {
+        propagate()
+        guard ok else { return false }
+
+        while starTotal < stars * size {
+            var progressed = false
+            for i in 0..<(size * size) where state[i] == 0 {
+                if trialContradicts(i, assume: 1) {       // a star here is impossible
+                    setEliminated(i); propagate()
+                    if !ok { return false }
+                    progressed = true
+                } else if trialContradicts(i, assume: 2) { // leaving it blank is impossible
+                    setStar(i); propagate()
+                    if !ok { return false }
+                    progressed = true
+                }
+            }
+            if !progressed { return false }   // stuck → would require guessing
+        }
+        return true
+    }
+
+    /// Tentatively sets cell `i` to `value`, propagates, notes whether it breaks the
+    /// board, then rewinds every change.
+    private func trialContradicts(_ i: Int, assume value: Int8) -> Bool {
+        let mark = journal.count
+        if value == 1 { setStar(i) } else { setEliminated(i) }
+        propagate()
+        let bad = !ok
+        rewind(to: mark)
+        return bad
+    }
+
+    private func propagate() {
+        while ok, let i = queue.popLast() {
+            if state[i] == 1 {
+                let r = i / size, c = i % size
+                for (dr, dc) in Self.kingOffsets {
+                    let nr = r + dr, nc = c + dc
+                    if nr >= 0, nr < size, nc >= 0, nc < size {
+                        setEliminated(nr * size + nc)
+                        if !ok { return }
+                    }
+                }
+            }
+            checkUnit(rowCells[i / size])
+            if !ok { return }
+            checkUnit(colCells[i % size])
+            if !ok { return }
+            checkUnit(regionCellLists[regionOf[i]])
+            if !ok { return }
+        }
+    }
+
+    private func checkUnit(_ cells: [Int]) {
+        var s = 0, u = 0
+        for j in cells {
+            if state[j] == 1 { s += 1 } else if state[j] == 0 { u += 1 }
+        }
+        if s > stars || s + u < stars { ok = false; return }
+        if u > 0 && s == stars {
+            for j in cells where state[j] == 0 { setEliminated(j); if !ok { return } }
+        } else if u > 0 && s + u == stars {
+            for j in cells where state[j] == 0 { setStar(j); if !ok { return } }
+        }
+    }
+
+    private func setStar(_ i: Int) {
+        switch state[i] {
+        case 1: return
+        case 2: ok = false; return
+        default:
+            journal.append((i, 0))
+            state[i] = 1
+            starTotal += 1
+            queue.append(i)
+        }
+    }
+
+    private func setEliminated(_ i: Int) {
+        switch state[i] {
+        case 2: return
+        case 1: ok = false; return
+        default:
+            journal.append((i, 0))
+            state[i] = 2
+            queue.append(i)
+        }
+    }
+
+    private func rewind(to mark: Int) {
+        while journal.count > mark {
+            let (i, old) = journal.removeLast()
+            if state[i] == 1 { starTotal -= 1 }
+            state[i] = old
+        }
+        queue.removeAll(keepingCapacity: true)
+        ok = true
+    }
+}

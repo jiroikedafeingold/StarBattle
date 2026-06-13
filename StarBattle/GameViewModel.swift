@@ -1,0 +1,510 @@
+import Foundation
+import Observation
+import SwiftUI
+
+/// Holds the live game state: the current puzzle, the player's marks, and the
+/// derived information the UI needs (errors, win state, timer).
+@MainActor
+@Observable
+final class GameViewModel {
+
+    private(set) var puzzle: Puzzle
+    /// The player's mark for every cell, indexed `[row][col]`.
+    var marks: [[CellMark]]
+
+    /// How many placed stars are currently auto-dotting each cell. A cell can be
+    /// auto-dotted by more than one neighbouring star, so we keep a count rather
+    /// than a flag: the auto dot is only removed once the last star next to it is
+    /// gone. Dots the player placed by hand are never tracked here, so they
+    /// survive when a neighbouring star is removed.
+    private var autoDotCount: [GridPosition: Int] = [:]
+
+    private(set) var isGenerating = false
+    private(set) var isSolved = false
+    var elapsedSeconds = 0
+
+    /// Stars flagged by the last "Check" as not belonging to the solution. Cleared
+    /// as soon as the player changes the board.
+    private(set) var wrongStars: Set<GridPosition> = []
+    /// Bumped each time "Check" runs, so the view can fire a pass/fail haptic.
+    private(set) var checkPulse = 0
+    /// Whether the most recent check found any incorrect stars.
+    private(set) var lastCheckHadErrors = false
+
+    /// Bumped on every action; the view watches it to fire a tap haptic.
+    private(set) var tapPulse = 0
+    /// Whether the most recent action placed a star (used to pick a stronger haptic).
+    private(set) var lastActionPlacedStar = false
+
+    // MARK: Highlight (guessing) mode
+
+    /// Per-cell background "guess" colours, indexed `[row][col]`.
+    private(set) var highlights: [[CellHighlight]]
+    /// Whether the board is in Highlight (guessing) mode.
+    private(set) var isHighlightMode = false
+    /// The colour painted while in Highlight mode.
+    var selectedHighlight: CellHighlight = .guessStar
+    /// True while "Realize" is animating guesses into real marks.
+    private(set) var isRealizing = false
+    /// Whether any cell currently carries a highlight.
+    var hasHighlights: Bool { highlights.contains { row in row.contains { $0 != .none } } }
+
+    /// Mirrors `autoDotCount` for the highlight layer: how many "will be a star"
+    /// guesses are auto-dotting each cell with a grey guess. Lets a white guess
+    /// place grey guess-dots around itself, and remove only those when it's removed.
+    private var highlightAutoDotCount: [GridPosition: Int] = [:]
+
+    /// Full board snapshots captured before each action, for Undo.
+    private var history: [Snapshot] = []
+    private let historyLimit = 200
+    var canUndo: Bool { !history.isEmpty }
+
+    private struct Snapshot {
+        let marks: [[CellMark]]
+        let autoDotCount: [GridPosition: Int]
+        let highlights: [[CellHighlight]]
+        let highlightAutoDotCount: [GridPosition: Int]
+    }
+
+    /// On-disk pool of previously generated puzzles, for launch-screen variety.
+    private let store = PuzzleStore()
+
+    /// Puzzles generated ahead of time so "New Puzzle" is instant even on rapid
+    /// taps. Kept topped up to `prefetchDepth`.
+    private var prefetchQueue: [Task<Puzzle, Never>] = []
+    private let prefetchDepth = 2
+
+    init() {
+        // Show a real, playable board immediately — no spinner on launch — while the
+        // generator warms up the prefetch queue in the background. The launch board
+        // is drawn from the saved pool when available, so it varies between launches.
+        let launch = store.launchPuzzle()
+        puzzle = launch
+        marks = Self.emptyMarks(size: launch.size)
+        highlights = Self.emptyHighlights(size: launch.size)
+        isGenerating = false
+
+        // Don't spin up background generation inside SwiftUI previews.
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            topUpPrefetch()
+        }
+    }
+
+    // MARK: - Lifecycle
+
+    /// Installs a fresh puzzle, handing back one prepared in the background. Falls
+    /// back to on-demand generation only if the queue hasn't caught up yet.
+    func newGame() async {
+        isGenerating = true
+        isSolved = false
+        elapsedSeconds = 0
+
+        let fresh: Puzzle
+        if !prefetchQueue.isEmpty {
+            fresh = await prefetchQueue.removeFirst().value
+        } else {
+            fresh = await PuzzleGenerator.generate()
+        }
+
+        puzzle = fresh
+        marks = Self.emptyMarks(size: fresh.size)
+        highlights = Self.emptyHighlights(size: fresh.size)
+        autoDotCount.removeAll()
+        highlightAutoDotCount.removeAll()
+        history.removeAll()
+        clearCheck()
+        isHighlightMode = false
+        isGenerating = false
+
+        topUpPrefetch()
+    }
+
+    /// Keeps the background generation queue filled to `prefetchDepth`. The tasks
+    /// run concurrently off the main actor, so several puzzles prepare in parallel.
+    /// Each finished puzzle is also saved to the on-disk pool for launch variety.
+    private func topUpPrefetch() {
+        while prefetchQueue.count < prefetchDepth {
+            let task = Task.detached(priority: .utility) {
+                PuzzleGenerator.buildPuzzle()
+            }
+            prefetchQueue.append(task)
+            Task { [weak self] in
+                let puzzle = await task.value
+                self?.store.add(puzzle)
+            }
+        }
+    }
+
+    /// Removes every mark and guess highlight from the board (undoable).
+    func clearBoard() {
+        let hasMarks = marks.contains { row in row.contains { $0 != .empty } }
+        guard hasMarks || hasHighlights else { return }
+        pushHistory()
+        marks = Self.emptyMarks(size: puzzle.size)
+        highlights = Self.emptyHighlights(size: puzzle.size)
+        autoDotCount.removeAll()
+        highlightAutoDotCount.removeAll()
+        clearCheck()
+        isSolved = false
+    }
+
+    // MARK: - Interaction
+
+    /// Cycles a cell: empty → dot → star → empty.
+    ///
+    /// A first tap leaves a dot — the player's note that a star can't go here.
+    /// A second tap promotes it to a star and automatically dots the eight
+    /// surrounding cells (where a star is now impossible). A third tap clears the
+    /// star and removes only those auto-placed dots, leaving any dots the player
+    /// had already placed by hand untouched.
+    func tap(row: Int, col: Int) {
+        guard !isGenerating, !isSolved, !isRealizing else { return }
+
+        // In Highlight mode a tap paints (or clears) the selected guess colour
+        // rather than cycling the cell's mark.
+        if isHighlightMode {
+            pushHistory()
+            let pos = GridPosition(row: row, col: col)
+            if highlights[row][col] == selectedHighlight {
+                clearGuess(at: pos)            // tapping the same colour clears it
+            } else {
+                placeGuess(at: pos)            // otherwise paint the selected colour
+            }
+            lastActionPlacedStar = false
+            tapPulse &+= 1
+            return
+        }
+
+        pushHistory()
+        clearCheck()
+        let pos = GridPosition(row: row, col: col)
+        switch marks[row][col] {
+        case .empty:
+            marks[row][col] = .dot
+            lastActionPlacedStar = false
+        case .dot:
+            marks[row][col] = .star
+            addAutoDots(around: pos)
+            lastActionPlacedStar = true
+        case .star:
+            removeAutoDots(around: pos)
+            marks[row][col] = .empty
+            lastActionPlacedStar = false
+        }
+        tapPulse &+= 1
+        evaluateWin()
+    }
+
+    /// Reverts the most recent action, restoring the exact board that preceded it.
+    func undo() {
+        guard !isGenerating, !isRealizing, let snapshot = history.popLast() else { return }
+        marks = snapshot.marks
+        autoDotCount = snapshot.autoDotCount
+        highlights = snapshot.highlights
+        highlightAutoDotCount = snapshot.highlightAutoDotCount
+        clearCheck()
+        lastActionPlacedStar = false
+        tapPulse &+= 1
+        evaluateWin()
+    }
+
+    /// Records the current board so the next action can be undone.
+    private func pushHistory() {
+        history.append(Snapshot(marks: marks, autoDotCount: autoDotCount,
+                                highlights: highlights,
+                                highlightAutoDotCount: highlightAutoDotCount))
+        if history.count > historyLimit {
+            history.removeFirst(history.count - historyLimit)
+        }
+    }
+
+    // MARK: - Drag-to-mark
+
+    /// Board state captured when a drag begins, so each move recomputes the stroke
+    /// from scratch (letting the line grow and shrink as the finger moves).
+    private var dragBase: [[CellMark]]?
+    private var dragPaintedGuessCells: Set<GridPosition> = []
+    private var dragLength = 0
+
+    /// Starts a drag stroke: snapshots the board once for Undo and for recomputation.
+    func beginDrag() {
+        guard !isGenerating, !isSolved, !isRealizing else { return }
+        pushHistory()
+        dragLength = 0
+        if isHighlightMode {
+            dragPaintedGuessCells = []
+        } else {
+            clearCheck()
+            dragBase = marks
+        }
+    }
+
+    /// Paints a straight line between `start` and `end` (which share a row or
+    /// column). In Highlight mode it paints the selected guess colour onto each
+    /// newly-crossed cell (applying guess auto-dots); otherwise it paints dots,
+    /// leaving existing stars untouched and rebuilding the stroke from the pre-drag
+    /// board each call so dragging back over the line erases it again.
+    func dragPaint(from start: GridPosition, to end: GridPosition) {
+        let cells = Self.lineCells(from: start, to: end)
+        if isHighlightMode {
+            for cell in cells where !dragPaintedGuessCells.contains(cell) {
+                placeGuess(at: cell)
+                dragPaintedGuessCells.insert(cell)
+            }
+        } else {
+            guard let base = dragBase else { return }
+            var updated = base
+            for cell in cells where updated[cell.row][cell.col] != .star {
+                updated[cell.row][cell.col] = .dot
+            }
+            marks = updated
+        }
+        if cells.count != dragLength {
+            dragLength = cells.count
+            lastActionPlacedStar = false
+            tapPulse &+= 1 // a light tick as the stroke crosses each new cell
+        }
+    }
+
+    /// Ends a drag stroke.
+    func endDrag() {
+        dragBase = nil
+        dragPaintedGuessCells = []
+        dragLength = 0
+        evaluateWin()
+    }
+
+    /// The cells on the straight line between two points that share a row or column.
+    private static func lineCells(from a: GridPosition, to b: GridPosition) -> [GridPosition] {
+        if a.row == b.row {
+            let lo = min(a.col, b.col), hi = max(a.col, b.col)
+            return (lo...hi).map { GridPosition(row: a.row, col: $0) }
+        } else {
+            let lo = min(a.row, b.row), hi = max(a.row, b.row)
+            return (lo...hi).map { GridPosition(row: $0, col: a.col) }
+        }
+    }
+
+    /// The eight cells touching `pos`, clipped to the board.
+    private func neighbors(of pos: GridPosition) -> [GridPosition] {
+        var result: [GridPosition] = []
+        for dr in -1...1 {
+            for dc in -1...1 where !(dr == 0 && dc == 0) {
+                let r = pos.row + dr, c = pos.col + dc
+                if r >= 0, r < puzzle.size, c >= 0, c < puzzle.size {
+                    result.append(GridPosition(row: r, col: c))
+                }
+            }
+        }
+        return result
+    }
+
+    /// Marks the empty neighbours of a newly placed star as auto dots and records
+    /// that this star is responsible for them.
+    private func addAutoDots(around pos: GridPosition) {
+        for n in neighbors(of: pos) {
+            let mark = marks[n.row][n.col]
+            // Never overwrite a star.
+            if mark == .star { continue }
+            let count = autoDotCount[n, default: 0]
+            // A dot with no count is one the player placed by hand: leave it
+            // (and don't start tracking it) so it survives this star's removal.
+            if mark == .dot && count == 0 { continue }
+            marks[n.row][n.col] = .dot
+            autoDotCount[n] = count + 1
+        }
+    }
+
+    /// Reverses `addAutoDots`: decrements the count for each neighbour and clears
+    /// the dot once no remaining star is auto-dotting it. Hand-placed dots have no
+    /// count, so they are left alone.
+    private func removeAutoDots(around pos: GridPosition) {
+        for n in neighbors(of: pos) {
+            guard let count = autoDotCount[n] else { continue }
+            if count <= 1 {
+                autoDotCount[n] = nil
+                if marks[n.row][n.col] == .dot {
+                    marks[n.row][n.col] = .empty
+                }
+            } else {
+                autoDotCount[n] = count - 1
+            }
+        }
+    }
+
+    // MARK: - Guess painting (Highlight mode)
+
+    /// Paints the selected guess colour on `pos`. A white "will be a star" guess
+    /// also drops grey guess-dots around it (mirroring a real star's auto-dots).
+    private func placeGuess(at pos: GridPosition) {
+        let old = highlights[pos.row][pos.col]
+        guard old != selectedHighlight else { return }
+        if old == .guessStar { removeGuessAutoDots(around: pos) }
+        highlightAutoDotCount[pos] = nil            // this cell is now explicitly set
+        highlights[pos.row][pos.col] = selectedHighlight
+        if selectedHighlight == .guessStar { addGuessAutoDots(around: pos) }
+    }
+
+    /// Clears the guess on `pos`, removing its auto guess-dots if it was a star.
+    private func clearGuess(at pos: GridPosition) {
+        if highlights[pos.row][pos.col] == .guessStar { removeGuessAutoDots(around: pos) }
+        highlights[pos.row][pos.col] = .none
+        highlightAutoDotCount[pos] = nil
+    }
+
+    /// Grey-dots the neighbours of a white guess, ref-counted so hand-placed grey
+    /// guesses survive and shared neighbours stay until the last white guess goes.
+    private func addGuessAutoDots(around pos: GridPosition) {
+        for n in neighbors(of: pos) {
+            let h = highlights[n.row][n.col]
+            if h == .guessStar { continue }                  // never overwrite a star guess
+            let count = highlightAutoDotCount[n, default: 0]
+            if h == .guessEmpty && count == 0 { continue }   // hand-placed grey: leave it
+            highlights[n.row][n.col] = .guessEmpty
+            highlightAutoDotCount[n] = count + 1
+        }
+    }
+
+    /// Reverses `addGuessAutoDots`.
+    private func removeGuessAutoDots(around pos: GridPosition) {
+        for n in neighbors(of: pos) {
+            guard let count = highlightAutoDotCount[n] else { continue }
+            if count <= 1 {
+                highlightAutoDotCount[n] = nil
+                if highlights[n.row][n.col] == .guessEmpty { highlights[n.row][n.col] = .none }
+            } else {
+                highlightAutoDotCount[n] = count - 1
+            }
+        }
+    }
+
+    // MARK: - Derived state
+
+    /// Every star the player has placed.
+    var starPositions: [GridPosition] {
+        var result: [GridPosition] = []
+        for r in 0..<puzzle.size {
+            for c in 0..<puzzle.size where marks[r][c] == .star {
+                result.append(GridPosition(row: r, col: c))
+            }
+        }
+        return result
+    }
+
+    /// Flags every placed star that isn't part of the puzzle's (unique) solution.
+    /// The highlight stays until the player next changes the board.
+    func check() {
+        guard !isGenerating, !puzzle.solution.isEmpty else { return }
+        let wrong = starPositions.filter { !puzzle.solution.contains($0) }
+        wrongStars = Set(wrong)
+        lastCheckHadErrors = !wrong.isEmpty
+        checkPulse &+= 1
+    }
+
+    /// Drops any "Check" highlight; called whenever the board changes.
+    private func clearCheck() {
+        if !wrongStars.isEmpty { wrongStars.removeAll() }
+    }
+
+    // MARK: - Highlight (guessing) mode
+
+    /// Enters or leaves Highlight mode. Leaving keeps the painted guesses on the
+    /// board — it only changes what tapping does.
+    func toggleHighlightMode() {
+        guard !isRealizing else { return }
+        isHighlightMode.toggle()
+    }
+
+    /// Chooses the guess colour painted by taps/drags in Highlight mode.
+    func selectHighlight(_ highlight: CellHighlight) {
+        selectedHighlight = highlight
+    }
+
+    /// Commits the painted guesses to real marks, one at a time with a short delay
+    /// so the board fills in gradually, clearing each guess colour as it goes.
+    /// White guesses become stars, grey guesses become dots. Undoable as one step.
+    func realizeGuesses() async {
+        guard !isGenerating, !isRealizing else { return }
+        let guesses = guessedCells()
+        guard !guesses.isEmpty else { return }
+
+        pushHistory()
+        clearCheck()
+        isRealizing = true
+        for (pos, guess) in guesses {
+            withAnimation(.easeOut(duration: 0.18)) {
+                switch guess {
+                case .guessStar:
+                    marks[pos.row][pos.col] = .star
+                    // Play it out for real: dot the neighbours where appropriate.
+                    addAutoDots(around: pos)
+                case .guessEmpty:
+                    marks[pos.row][pos.col] = .dot
+                case .none:
+                    break
+                }
+                highlights[pos.row][pos.col] = .none
+            }
+            tapPulse &+= 1
+            try? await Task.sleep(for: .milliseconds(150))
+        }
+        highlightAutoDotCount.removeAll()
+        isRealizing = false
+        evaluateWin()
+    }
+
+    /// Cells carrying a guess highlight, in reading order, paired with the guess.
+    private func guessedCells() -> [(GridPosition, CellHighlight)] {
+        var result: [(GridPosition, CellHighlight)] = []
+        for r in 0..<puzzle.size {
+            for c in 0..<puzzle.size where highlights[r][c] != .none {
+                result.append((GridPosition(row: r, col: c), highlights[r][c]))
+            }
+        }
+        return result
+    }
+
+    // MARK: - Win detection
+
+    private func evaluateWin() {
+        isSolved = isValidSolution()
+    }
+
+    /// True when the board satisfies every Star Battle rule.
+    private func isValidSolution() -> Bool {
+        let stars = starPositions
+        let target = puzzle.starsPerUnit
+        guard stars.count == puzzle.size * target else { return false }
+
+        var rowCount = Array(repeating: 0, count: puzzle.size)
+        var colCount = Array(repeating: 0, count: puzzle.size)
+        var regionCount = Array(repeating: 0, count: puzzle.size)
+        for s in stars {
+            rowCount[s.row] += 1
+            colCount[s.col] += 1
+            regionCount[puzzle.regionId(row: s.row, col: s.col)] += 1
+        }
+        guard rowCount.allSatisfy({ $0 == target }),
+              colCount.allSatisfy({ $0 == target }),
+              regionCount.allSatisfy({ $0 == target }) else { return false }
+
+        for a in stars {
+            for b in stars where a != b {
+                if abs(a.row - b.row) <= 1 && abs(a.col - b.col) <= 1 {
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    // MARK: - Helpers
+
+    private static func emptyMarks(size: Int) -> [[CellMark]] {
+        Array(repeating: Array(repeating: .empty, count: size), count: size)
+    }
+
+    private static func emptyHighlights(size: Int) -> [[CellHighlight]] {
+        Array(repeating: Array(repeating: .none, count: size), count: size)
+    }
+}
