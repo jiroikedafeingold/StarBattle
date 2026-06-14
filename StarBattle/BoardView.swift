@@ -363,6 +363,30 @@ extension Color {
     }
 }
 
+#Preview("Icon") {
+    // A clean board with a handful of stars and dots, edge-to-edge and text-free,
+    // for capturing the app icon.
+    let p = Puzzle.starters.first ?? Puzzle.placeholder()
+    var marks = Array(repeating: Array(repeating: CellMark.empty, count: p.size), count: p.size)
+    let stars = p.solution.sorted { $0.row * p.size + $0.col < $1.row * p.size + $1.col }.prefix(7)
+    for s in stars { marks[s.row][s.col] = .star }
+    var dots = 0
+    for r in stride(from: 1, to: p.size, by: 2) {
+        for c in stride(from: 0, to: p.size, by: 3) where marks[r][c] == .empty {
+            marks[r][c] = .dot
+            dots += 1
+            if dots >= 8 { break }
+        }
+        if dots >= 8 { break }
+    }
+    let highlights = Array(repeating: Array(repeating: CellHighlight.none, count: p.size), count: p.size)
+
+    return BoardView(puzzle: p, marks: marks, highlights: highlights, wrongStars: [],
+                     onTap: { _, _ in }, onDragBegin: {}, onDragPaint: { _, _ in }, onDragEnd: {})
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+}
+
 #Preview("Board") {
     // A static 2x5 block layout (10 regions) so both vertical and horizontal
     // region borders are visible, with a few sample marks.
