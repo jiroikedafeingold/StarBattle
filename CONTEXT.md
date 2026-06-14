@@ -76,7 +76,10 @@ of a 10×10 grid, where no two cherries may touch — not even diagonally.
 2. `RenderPreview` `BoardView.swift` index 0 → snapshot PNG.
 3. `W=$(sips -g pixelWidth SNAP)`, `sips -c $W $W SNAP --out crop.png`,
    `sips -z 1024 1024 crop.png --out AppIcon.png`, copy into the appiconset.
-4. Build; verify `AppIcon60x60@2x.png` + `Assets.car` appear in the built `.app`.
+4. **Strip the alpha channel** (`sips -g hasAlpha` must say `no`) — RGBA preview
+   snapshots render **blank as an app icon on a physical device**. Flatten with a
+   CoreGraphics Swift script (noneSkipLast context); no ImageMagick/PIL here.
+5. Build; verify `AppIcon60x60@2x.png` + `Assets.car` appear in the built `.app`.
    On device, delete the app first to clear the home-screen icon cache.
 
 ## Build / verify
