@@ -7,30 +7,39 @@ struct GameView: View {
     @State private var showClearConfirm = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            header
+        GeometryReader { geo in
+            // Size the board to the full available width so it fills the screen in
+            // both normal and Highlight mode. The layout scrolls only if a smaller
+            // device can't fit everything at once.
+            let side = min(geo.size.width, 560) - 32
+            ScrollView {
+                VStack(spacing: 16) {
+                    header
 
-            board
+                    board(side: side)
 
-            // The bar's space is always reserved so the board doesn't resize when
-            // entering or leaving Highlight mode.
-            highlightBar
-                .opacity(model.isHighlightMode ? 1 : 0)
-                .allowsHitTesting(model.isHighlightMode)
+                    if model.isHighlightMode {
+                        highlightBar
+                            .transition(.move(edge: .top).combined(with: .opacity))
+                    }
 
-            controls
+                    controls
 
-            legend
+                    legend
+                }
+                .padding()
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: geo.size.height, alignment: .top)
+            }
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .padding()
-        .frame(maxWidth: 560)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if model.isSolved {
                 celebration
             }
         }
         .animation(.spring(duration: 0.5), value: model.isSolved)
+        .animation(.spring(duration: 0.35), value: model.isHighlightMode)
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
             Button("New Puzzle", role: .destructive) { Task { await model.newGame() } }
@@ -52,6 +61,10 @@ struct GameView: View {
         .sensoryFeedback(trigger: model.isSolved) { wasSolved, isSolved in
             (isSolved && !wasSolved) ? .success : nil
         }
+        // A rolling burst of heavy impacts while the win celebration plays.
+        .sensoryFeedback(trigger: model.celebrationPulse) { _, _ in
+            .impact(weight: .heavy, intensity: 1.0)
+        }
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
             model.lastCheckHadErrors ? .error : .success
         }
@@ -70,9 +83,9 @@ struct GameView: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            Text("Star Battle")
+            Text("Cherry Battle")
                 .font(.largeTitle.bold())
-            Text("Place 2 stars in every row, column and region")
+            Text("Place 2 cherries in every row, column and region")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Label(timeString, systemImage: "clock")
@@ -83,7 +96,7 @@ struct GameView: View {
 
     // MARK: - Board
 
-    private var board: some View {
+    private func board(side: CGFloat) -> some View {
         ZStack {
             BoardView(
                 puzzle: model.puzzle,
@@ -95,14 +108,16 @@ struct GameView: View {
                 onDragPaint: { start, end in model.dragPaint(from: start, to: end) },
                 onDragEnd: { model.endDrag() }
             )
+            .frame(width: side, height: side)
             .opacity(model.isGenerating ? 0.15 : 1)
 
             if model.isGenerating {
-                ProgressView("Generating puzzle…")
+                ProgressView("Creating a new board…")
                     .padding()
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
             }
         }
+        .frame(width: side, height: side)
     }
 
     // MARK: - Celebration
@@ -236,8 +251,8 @@ struct GameView: View {
 
     private var legend: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Label("Tap a cell to cycle: empty → • dot → ⭐︎ star → empty", systemImage: "hand.tap")
-            Label("Stars may never touch — not even diagonally", systemImage: "star.slash")
+            Label("Tap a cell to cycle: empty → • dot → 🍒 cherry → empty", systemImage: "hand.tap")
+            Label("Cherries may never touch — not even diagonally", systemImage: "exclamationmark.triangle")
         }
         .font(.footnote)
         .foregroundStyle(.secondary)

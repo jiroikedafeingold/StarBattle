@@ -36,6 +36,10 @@ final class GameViewModel {
     /// Whether the most recent action placed a star (used to pick a stronger haptic).
     private(set) var lastActionPlacedStar = false
 
+    /// Bumped repeatedly when a puzzle is solved so the view can play a strong,
+    /// rolling burst of haptics during the celebration.
+    private(set) var celebrationPulse = 0
+
     // MARK: Highlight (guessing) mode
 
     /// Per-cell background "guess" colours, indexed `[row][col]`.
@@ -467,7 +471,19 @@ final class GameViewModel {
     // MARK: - Win detection
 
     private func evaluateWin() {
+        let wasSolved = isSolved
         isSolved = isValidSolution()
+        if isSolved && !wasSolved { playCelebrationHaptics() }
+    }
+
+    /// Fires a short, strong sequence of heavy impacts to accompany the win.
+    private func playCelebrationHaptics() {
+        Task { @MainActor in
+            for _ in 0..<9 {
+                celebrationPulse &+= 1
+                try? await Task.sleep(for: .milliseconds(110))
+            }
+        }
     }
 
     /// True when the board satisfies every Star Battle rule.

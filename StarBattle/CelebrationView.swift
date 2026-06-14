@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// A full-screen burst of falling confetti — stars, dots and ribbons in festive
+/// A full-screen burst of falling confetti — cherries, dots and ribbons in festive
 /// colours — used to celebrate a solved puzzle.
 struct CelebrationView: View {
     @State private var animate = false
@@ -42,15 +42,13 @@ private struct ConfettiPiece: Identifiable {
     let delay: Double
     let kind: Kind
 
-    enum Kind { case star, circle, ribbon }
+    enum Kind { case cherry, circle, ribbon }
 
     @ViewBuilder var shape: some View {
         switch kind {
-        case .star:
-            Image(systemName: "star.fill")
-                .resizable()
-                .frame(width: size, height: size)
-                .foregroundStyle(color)
+        case .cherry:
+            Text("🍒")
+                .font(.system(size: size))
         case .circle:
             Circle()
                 .fill(color)
@@ -67,7 +65,7 @@ private struct ConfettiPiece: Identifiable {
             .red, .orange, .yellow, .green, .mint, .blue, .purple, .pink,
             Color(red: 1.0, green: 0.84, blue: 0.0)
         ]
-        let kinds: [Kind] = [.star, .star, .circle, .ribbon]
+        let kinds: [Kind] = [.cherry, .cherry, .circle, .ribbon]
         return (0..<count).map { _ in
             ConfettiPiece(
                 x: CGFloat.random(in: 0...1),

@@ -138,7 +138,7 @@ private struct CellView: View {
             case .empty:
                 EmptyView()
             case .star:
-                StarView(isWrong: isWrong, size: cellSize * 0.72)
+                CherryView(isWrong: isWrong, size: cellSize * 0.80)
             case .dot:
                 Circle()
                     // Fixed dark grey so the dot reads on the light board in both
@@ -178,11 +178,10 @@ struct GuessGlyph: View {
     var body: some View {
         switch highlight {
         case .guessStar:
-            // A soft, filled star in muted gold — a quiet "this will be a star" hint
+            // A soft, faded pair of cherries — a quiet "this will be a cherry" hint
             // on the pale-yellow cell.
-            StarShape()
-                .fill(Color(red: 0.90, green: 0.64, blue: 0.06).opacity(0.4))
-                .frame(width: cellSize * 0.72, height: cellSize * 0.72)
+            CherryView(isWrong: false, size: cellSize * 0.80)
+                .opacity(0.42)
         case .guessEmpty:
             Circle()
                 .fill(Color(white: 0.28))
@@ -194,97 +193,91 @@ struct GuessGlyph: View {
     }
 }
 
-/// Colours describing one star finish.
-private struct StarPalette {
-    let bright, mid, deep, outline, glow: Color
+/// Colours describing one cherry finish.
+private struct CherryPalette {
+    let bright, mid, deep, outline, glow, stem, leaf: Color
 
-    static let gold = StarPalette(
-        bright: Color(red: 1.0, green: 0.97, blue: 0.74),
-        mid: Color(red: 1.0, green: 0.82, blue: 0.26),
-        deep: Color(red: 0.92, green: 0.54, blue: 0.02),
-        outline: Color(red: 0.62, green: 0.38, blue: 0.0),
-        glow: Color(red: 1.0, green: 0.78, blue: 0.22))
+    /// A ripe red cherry — the normal placed mark.
+    static let ripe = CherryPalette(
+        bright: Color(red: 1.0, green: 0.52, blue: 0.52),
+        mid: Color(red: 0.86, green: 0.12, blue: 0.18),
+        deep: Color(red: 0.52, green: 0.02, blue: 0.07),
+        outline: Color(red: 0.36, green: 0.01, blue: 0.05),
+        glow: Color(red: 0.95, green: 0.18, blue: 0.24),
+        stem: Color(red: 0.40, green: 0.26, blue: 0.12),
+        leaf: Color(red: 0.30, green: 0.62, blue: 0.22))
 
-    static let red = StarPalette(
-        bright: Color(red: 1.0, green: 0.82, blue: 0.80),
-        mid: Color(red: 0.97, green: 0.38, blue: 0.34),
-        deep: Color(red: 0.78, green: 0.09, blue: 0.10),
-        outline: Color(red: 0.52, green: 0.05, blue: 0.05),
-        glow: Color(red: 1.0, green: 0.32, blue: 0.30))
+    /// A clearly different blue finish for cherries flagged wrong by "Check".
+    static let wrong = CherryPalette(
+        bright: Color(red: 0.74, green: 0.86, blue: 1.0),
+        mid: Color(red: 0.24, green: 0.46, blue: 0.92),
+        deep: Color(red: 0.06, green: 0.16, blue: 0.52),
+        outline: Color(red: 0.03, green: 0.09, blue: 0.34),
+        glow: Color(red: 0.30, green: 0.52, blue: 1.0),
+        stem: Color(red: 0.30, green: 0.30, blue: 0.34),
+        leaf: Color(red: 0.34, green: 0.52, blue: 0.40))
 }
 
-/// A glossy, layered five-pointed star: a radial-gradient body, an inner shine, a
-/// bright specular highlight, a crisp rim, and a soft coloured glow.
-private struct StarView: View {
+/// A glossy pair of cherries — the traditional two fruit joined by stems to a small
+/// leaf. Drawn in a Canvas so it stays crisp at any cell size.
+private struct CherryView: View {
     let isWrong: Bool
     let size: CGFloat
 
     var body: some View {
-        let p = isWrong ? StarPalette.red : StarPalette.gold
+        let p = isWrong ? CherryPalette.wrong : CherryPalette.ripe
 
-        ZStack {
-            StarShape()
-                .fill(
-                    RadialGradient(
-                        colors: [p.bright, p.mid, p.deep],
-                        center: UnitPoint(x: 0.40, y: 0.34),
-                        startRadius: size * 0.02,
-                        endRadius: size * 0.62
-                    )
-                )
+        Canvas { ctx, sz in
+            let s = min(sz.width, sz.height)
 
-            // Inner shine — a smaller star washed brighter at the top for depth.
-            StarShape()
-                .fill(
-                    LinearGradient(
-                        colors: [.white.opacity(0.85), .white.opacity(0.0)],
-                        startPoint: .top, endPoint: .center
-                    )
-                )
-                .scaleEffect(0.62)
-                .opacity(0.55)
+            // Cherry geometry, as fractions of the box.
+            let left = CGPoint(x: 0.33 * s, y: 0.70 * s)
+            let right = CGPoint(x: 0.67 * s, y: 0.76 * s)
+            let rL = 0.225 * s
+            let rR = 0.205 * s
+            let join = CGPoint(x: 0.58 * s, y: 0.14 * s)
 
-            // Specular highlight near the upper-left.
-            Ellipse()
-                .fill(.white)
-                .frame(width: size * 0.30, height: size * 0.16)
-                .rotationEffect(.degrees(-25))
-                .offset(x: -size * 0.13, y: -size * 0.20)
-                .blur(radius: size * 0.03)
-                .opacity(0.75)
+            // Stems (drawn behind the fruit).
+            var stems = Path()
+            stems.move(to: join)
+            stems.addQuadCurve(to: CGPoint(x: left.x, y: left.y - rL * 0.7),
+                               control: CGPoint(x: 0.40 * s, y: 0.30 * s))
+            stems.move(to: join)
+            stems.addQuadCurve(to: CGPoint(x: right.x, y: right.y - rR * 0.7),
+                               control: CGPoint(x: 0.66 * s, y: 0.36 * s))
+            ctx.stroke(stems, with: .color(p.stem),
+                       style: StrokeStyle(lineWidth: max(1, 0.045 * s), lineCap: .round))
+
+            // A small leaf near the join.
+            var leaf = Path()
+            leaf.move(to: join)
+            leaf.addQuadCurve(to: CGPoint(x: 0.78 * s, y: 0.10 * s),
+                              control: CGPoint(x: 0.64 * s, y: 0.01 * s))
+            leaf.addQuadCurve(to: join,
+                              control: CGPoint(x: 0.74 * s, y: 0.24 * s))
+            leaf.closeSubpath()
+            ctx.fill(leaf, with: .color(p.leaf))
+
+            // The two cherries: each a radial-gradient sphere with a rim and a shine.
+            for (c, r) in [(left, rL), (right, rR)] {
+                let rect = CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)
+                ctx.fill(
+                    Path(ellipseIn: rect),
+                    with: .radialGradient(
+                        Gradient(colors: [p.bright, p.mid, p.deep]),
+                        center: CGPoint(x: c.x - r * 0.35, y: c.y - r * 0.40),
+                        startRadius: r * 0.05, endRadius: r * 1.15))
+                ctx.stroke(Path(ellipseIn: rect), with: .color(p.outline),
+                           lineWidth: max(0.5, 0.03 * s))
+                // Specular highlight near the upper-left.
+                let hr = CGRect(x: c.x - r * 0.55, y: c.y - r * 0.62,
+                                width: r * 0.50, height: r * 0.34)
+                ctx.fill(Path(ellipseIn: hr), with: .color(.white.opacity(0.8)))
+            }
         }
         .frame(width: size, height: size)
-        .mask(StarShape().frame(width: size, height: size))
-        .overlay(
-            StarShape()
-                .stroke(p.outline, lineWidth: max(0.6, size * 0.04))
-                .frame(width: size, height: size)
-        )
-        .shadow(color: p.glow.opacity(0.5), radius: size * 0.07, x: 0, y: 0)
-        .shadow(color: .black.opacity(0.22), radius: size * 0.03, x: 0, y: size * 0.025)
-    }
-}
-
-/// A regular five-pointed star path inscribed in the given rect.
-private struct StarShape: Shape {
-    var points: Int = 5
-    var innerRatio: CGFloat = 0.42
-
-    func path(in rect: CGRect) -> Path {
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let outer = min(rect.width, rect.height) / 2
-        let inner = outer * innerRatio
-        var path = Path()
-        let steps = points * 2
-        for i in 0..<steps {
-            let radius = i.isMultiple(of: 2) ? outer : inner
-            let angle = -CGFloat.pi / 2 + CGFloat(i) * .pi / CGFloat(points)
-            let point = CGPoint(x: center.x + radius * cos(angle),
-                                y: center.y + radius * sin(angle))
-            if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
-        }
-        path.closeSubpath()
-        return path
+        .shadow(color: p.glow.opacity(0.45), radius: size * 0.06, x: 0, y: 0)
+        .shadow(color: .black.opacity(0.20), radius: size * 0.03, x: 0, y: size * 0.02)
     }
 }
 
@@ -364,21 +357,11 @@ extension Color {
 }
 
 #Preview("Icon") {
-    // A clean board with a handful of stars and dots, edge-to-edge and text-free,
-    // for capturing the app icon.
+    // A fully solved board (every solution star placed, no dots), edge-to-edge and
+    // text-free, for capturing the app icon.
     let p = Puzzle.starters.first ?? Puzzle.placeholder()
     var marks = Array(repeating: Array(repeating: CellMark.empty, count: p.size), count: p.size)
-    let stars = p.solution.sorted { $0.row * p.size + $0.col < $1.row * p.size + $1.col }.prefix(7)
-    for s in stars { marks[s.row][s.col] = .star }
-    var dots = 0
-    for r in stride(from: 1, to: p.size, by: 2) {
-        for c in stride(from: 0, to: p.size, by: 3) where marks[r][c] == .empty {
-            marks[r][c] = .dot
-            dots += 1
-            if dots >= 8 { break }
-        }
-        if dots >= 8 { break }
-    }
+    for s in p.solution { marks[s.row][s.col] = .star }
     let highlights = Array(repeating: Array(repeating: CellHighlight.none, count: p.size), count: p.size)
 
     return BoardView(puzzle: p, marks: marks, highlights: highlights, wrongStars: [],
