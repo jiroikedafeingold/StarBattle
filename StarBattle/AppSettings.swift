@@ -18,14 +18,34 @@ enum PieceStyle: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 
     /// Short name shown in Settings.
-    var label: String {
+    var label: String { noun.capitalized }
+
+    /// The lowercase singular noun for this piece, used in instructional text and
+    /// hints (e.g. "place a star here").
+    var noun: String {
         switch self {
-        case .cherry: return "Cherry"
-        case .star:   return "Star"
-        case .queen:  return "Queen"
-        case .diamond: return "Diamond"
-        case .heart:  return "Heart"
+        case .cherry: return "cherry"
+        case .star:   return "star"
+        case .queen:  return "queen"
+        case .diamond: return "diamond"
+        case .heart:  return "heart"
         }
+    }
+
+    /// The lowercase plural noun (e.g. "two stars per row").
+    var plural: String {
+        switch self {
+        case .cherry: return "cherries"
+        case .star:   return "stars"
+        case .queen:  return "queens"
+        case .diamond: return "diamonds"
+        case .heart:  return "hearts"
+        }
+    }
+
+    /// The plural noun with a capitalised first letter, for the start of a sentence.
+    var pluralCapitalized: String {
+        plural.prefix(1).uppercased() + plural.dropFirst()
     }
 
     /// The SF Symbol used for every style except the custom-drawn cherry.

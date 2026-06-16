@@ -480,9 +480,9 @@ final class GameViewModel {
     /// an explanation in `hintMessage` for the view to show. If the player has an
     /// incorrect cherry, or the position needs a guess, nothing is placed and the
     /// message says so.
-    func hint() {
+    func hint(item: String = "cherry", items: String = "cherries") {
         guard canHint else { return }
-        let result = HintEngine.nextHint(puzzle: puzzle, marks: marks)
+        let result = HintEngine.nextHint(puzzle: puzzle, marks: marks, item: item, items: items)
 
         if result.outcome == .place, let pos = result.position {
             pushHistory()

@@ -4,39 +4,42 @@ import SwiftUI
 /// button to replay the tutorial, and credits.
 struct HelpView: View {
     @State private var showTutorial = false
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
 
     var body: some View {
         NavigationStack {
             List {
                 Section("How to play") {
                     rule("2.square.fill",
-                         "Every row, column and coloured region holds exactly two cherries.")
+                         "Every row, column and coloured region holds exactly two \(piece.plural).")
                     rule("hand.raised.slash.fill",
-                         "Two cherries may never touch — not even diagonally.")
+                         "Two \(piece.plural) may never touch — not even diagonally.")
                     rule("hand.tap.fill",
-                         "Tap a square to cycle it: empty → • dot → 🍒 cherry → empty.")
+                         "Tap a square to cycle it: empty → a dot → a \(piece.noun) → empty.")
                     rule("hand.draw.fill",
                          "Drag across a row or column to lay a line of dots quickly.")
                     rule("trophy.fill",
-                         "Solve it when all cherries are placed legally — the board celebrates!")
+                         "Solve it when all \(piece.plural) are placed legally — the board celebrates!")
                 }
 
                 Section("Tips & tactics") {
                     tip("square.dashed",
                         "Mark, don't guess",
-                        "Put a dot in every square you’ve ruled out. Placing a cherry dots its eight neighbours for you automatically.")
+                        "Put a dot in every square you’ve ruled out. Placing a \(piece.noun) dots its eight neighbours for you automatically.")
                     tip("arrow.down.right.and.arrow.up.left",
                         "Start where it’s tight",
-                        "Look for a row, column or region whose cherries can only fit one way — small or cramped regions are a great first move.")
+                        "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are a great first move.")
                     tip("equal.square",
                         "Count the gaps",
-                        "If a line still needs two cherries and has exactly two open squares, both must be cherries. If a line already has its two, every other square is empty.")
+                        "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). If a line already has its two, every other square is empty.")
                     tip("lightbulb.fill",
                         "Ask for a hint",
                         "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")
                     tip("highlighter",
                         "Test an idea safely",
-                        "In Mark mode, pencil in a candidate cherry and its dots. If it leads to a dead end, clear it; if it holds up, tap Realize to commit it.")
+                        "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap Realize to commit it.")
                 }
 
                 Section {
@@ -49,7 +52,7 @@ struct HelpView: View {
 
                 Section("Credits") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Cherry Bomb is a cherry-themed take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
+                        Text("Cherry Battle is a cherry-themed take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
                         Text("Made with 🍒 & SwiftUI.")
                             .foregroundStyle(.secondary)
                     }

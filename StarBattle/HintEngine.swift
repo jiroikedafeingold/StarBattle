@@ -29,8 +29,11 @@ struct Hint {
 /// not require a guess.
 enum HintEngine {
 
-    static func nextHint(puzzle: Puzzle, marks: [[CellMark]]) -> Hint {
-        let engine = Engine(puzzle: puzzle)
+    /// `item` / `items` are the singular / plural names of the current piece (e.g.
+    /// "star" / "stars"), so explanations match the icon the player has chosen.
+    static func nextHint(puzzle: Puzzle, marks: [[CellMark]],
+                         item: String = "cherry", items: String = "cherries") -> Hint {
+        let engine = Engine(puzzle: puzzle, item: item, items: items)
         return engine.nextHint(marks: marks)
     }
 
@@ -42,6 +45,10 @@ enum HintEngine {
         let cols: [[Int]]
         let regions: [[Int]]
         let units: [[Int]]
+        /// Piece name, singular and plural, plus a capitalised plural for sentence starts.
+        let item: String
+        let items: String
+        var itemsCap: String { items.prefix(1).uppercased() + items.dropFirst() }
 
         /// 0 = unknown, 1 = cherry, 2 = empty.
         var state: [Int8]
@@ -49,7 +56,9 @@ enum HintEngine {
         private static let king = [(-1, -1), (-1, 0), (-1, 1), (0, -1),
                                    (0, 1), (1, -1), (1, 0), (1, 1)]
 
-        init(puzzle: Puzzle) {
+        init(puzzle: Puzzle, item: String, items: String) {
+            self.item = item
+            self.items = items
             n = puzzle.size
             quota = puzzle.starsPerUnit
             solution = puzzle.solution
@@ -80,7 +89,7 @@ enum HintEngine {
                     if !solution.contains(GridPosition(row: r, col: c)) {
                         return Hint(outcome: .mistake, position: GridPosition(row: r, col: c),
                                     placesStar: false,
-                                    message: "The cherry at row \(r + 1), column \(c + 1) isn't part of the solution. Tap Undo or remove it, then try again.")
+                                    message: "The \(item) at row \(r + 1), column \(c + 1) isn't part of the solution. Tap Undo or remove it, then try again.")
                     }
                 }
             }
@@ -112,7 +121,7 @@ enum HintEngine {
             let placed = state.lazy.filter { $0 == 1 }.count
             if placed >= quota * n {
                 return Hint(outcome: .solved, position: nil, placesStar: false,
-                            message: "Every cherry is already placed — you're done!")
+                            message: "Every \(item) is already placed — you're done!")
             }
             return Hint(outcome: .stuck, position: nil, placesStar: false,
                         message: "There's no certain move from here — this board may need a careful guess. Try Highlight mode to test an idea.")
@@ -129,7 +138,7 @@ enum HintEngine {
                 let needed = quota - stars
                 if needed > 0 && open.count == needed, let cell = open.first {
                     return Step(cell: cell, star: true,
-                                reason: "\(unitName(idx)) still needs \(needed) cherr\(needed == 1 ? "y" : "ies") and has exactly that many open squares left — so this square must be a cherry.")
+                                reason: "\(unitName(idx)) still needs \(needed) \(needed == 1 ? item : items) and has exactly that many open squares left — so this square must be a \(item).")
                 }
             }
             // 2. Contradiction → cherry: leaving this square empty would break a unit.
@@ -137,7 +146,7 @@ enum HintEngine {
                 if contradicts(setting: i, to: 2) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: true,
-                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be a cherry — leaving it empty would make a row, column or region impossible to complete.")
+                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be a \(item) — leaving it empty would make a row, column or region impossible to complete.")
                 }
             }
             // 3. Unit already satisfied → empty.
@@ -145,7 +154,7 @@ enum HintEngine {
                 let (stars, open) = tally(unit)
                 if stars == quota, let cell = open.first {
                     return Step(cell: cell, star: false,
-                                reason: "\(unitName(idx)) already has its \(quota) cherries, so this square can't be one.")
+                                reason: "\(unitName(idx)) already has its \(quota) \(items), so this square can't be one.")
                 }
             }
             // 4. Touches a cherry → empty.
@@ -157,7 +166,7 @@ enum HintEngine {
                     let j = nr * n + nc
                     if state[j] == 0 {
                         return Step(cell: j, star: false,
-                                    reason: "Cherries can never touch — this square sits next to the cherry at row \(r + 1), column \(c + 1), so it must be empty.")
+                                    reason: "\(itemsCap) can never touch — this square sits next to the \(item) at row \(r + 1), column \(c + 1), so it must be empty.")
                     }
                 }
             }
@@ -166,7 +175,7 @@ enum HintEngine {
                 if contradicts(setting: i, to: 1) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: false,
-                                reason: "A cherry at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
+                                reason: "A \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
                 }
             }
             return nil

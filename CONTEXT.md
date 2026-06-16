@@ -1,11 +1,11 @@
-# Cherry Bomb — Project Context
+# Cherry Battle — Project Context
 
 A SwiftUI logic-puzzle game (a "Star Battle" variant, re-themed to cherries) for
 iPhone and iPad. The player places **two cherries in every row, column and region**
 of a 10×10 grid, where no two cherries may touch — not even diagonally.
 
-> **Naming note:** the product is presented to users as **Cherry Bomb**
-> (`INFOPLIST_KEY_CFBundleDisplayName = "Cherry Bomb"`), and all on-screen text
+> **Naming note:** the product is presented to users as **Cherry Battle**
+> (`INFOPLIST_KEY_CFBundleDisplayName = "Cherry Battle"`), and all on-screen text
 > and artwork use cherries. The **Xcode project, target, scheme, source folder and
 > many internal identifiers are still named `StarBattle` / `star`** (e.g.
 > `CellMark.star`, `Puzzle.starsPerUnit`, `wrongStars`, `guessStar`). These were

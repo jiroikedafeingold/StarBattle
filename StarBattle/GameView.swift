@@ -95,9 +95,9 @@ struct GameView: View {
 
     private var header: some View {
         VStack(spacing: 2) {
-            Text("Cherry Bomb")
+            Text("Cherry Battle")
                 .font(.title.bold())
-            Text("Place 2 cherries in every row, column and region")
+            Text("Place 2 \(pieceStyle.plural) in every row, column and region")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -207,7 +207,9 @@ struct GameView: View {
             ToolButton(title: "Redo", systemImage: "arrow.uturn.forward",
                        isEnabled: model.canRedo) { model.redo() }
             ToolButton(title: "Hint", systemImage: "lightbulb",
-                       isEnabled: model.canHint) { model.hint() }
+                       isEnabled: model.canHint) {
+                model.hint(item: pieceStyle.noun, items: pieceStyle.plural)
+            }
             ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
             ToolButton(title: "Clear", systemImage: "trash") { showClearConfirm = true }
             ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
