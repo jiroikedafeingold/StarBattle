@@ -9,15 +9,15 @@ struct HelpView: View {
         NavigationStack {
             List {
                 Section("How to play") {
-                    rule("rectangle.grid.3x2",
+                    rule("2.square.fill",
                          "Every row, column and coloured region holds exactly two cherries.")
-                    rule("circle.grid.3x3",
+                    rule("hand.raised.slash.fill",
                          "Two cherries may never touch — not even diagonally.")
-                    rule("hand.tap",
+                    rule("hand.tap.fill",
                          "Tap a square to cycle it: empty → • dot → 🍒 cherry → empty.")
-                    rule("hand.draw",
+                    rule("hand.draw.fill",
                          "Drag across a row or column to lay a line of dots quickly.")
-                    rule("trophy",
+                    rule("trophy.fill",
                          "Solve it when all cherries are placed legally — the board celebrates!")
                 }
 
@@ -31,7 +31,7 @@ struct HelpView: View {
                     tip("equal.square",
                         "Count the gaps",
                         "If a line still needs two cherries and has exactly two open squares, both must be cherries. If a line already has its two, every other square is empty.")
-                    tip("lightbulb",
+                    tip("lightbulb.fill",
                         "Ask for a hint",
                         "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")
                     tip("highlighter",

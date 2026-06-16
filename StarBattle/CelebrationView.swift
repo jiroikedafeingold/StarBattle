@@ -3,31 +3,40 @@ import SwiftUI
 /// A full-screen burst of falling confetti — cherries, dots and ribbons in festive
 /// colours — used to celebrate a solved puzzle.
 struct CelebrationView: View {
-    @State private var animate = false
     private let pieces = ConfettiPiece.make(count: 120)
 
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                ForEach(pieces) { piece in
-                    piece.shape
-                        .position(
-                            x: piece.x * geo.size.width,
-                            y: animate ? geo.size.height * 1.15 : -geo.size.height * 0.15
-                        )
-                        .rotationEffect(.degrees(animate ? piece.spin : 0))
-                        .animation(
-                            .easeIn(duration: piece.duration)
-                                .delay(piece.delay)
-                                .repeatForever(autoreverses: false),
-                            value: animate
-                        )
+            // Drive the fall directly from elapsed time so it can't be swallowed by
+            // an ancestor animation transaction (which previously snapped every piece
+            // off-screen so the confetti was never seen). TimelineView re-renders each
+            // frame, advancing every piece down its own continuous loop.
+            TimelineView(.animation) { timeline in
+                let t = timeline.date.timeIntervalSinceReferenceDate
+                let h = geo.size.height
+                let w = geo.size.width
+                ZStack {
+                    ForEach(pieces) { piece in
+                        // Normalised fall progress 0…1, offset so pieces don't fall in sync.
+                        let progress = (t / piece.duration + piece.phase)
+                            .truncatingRemainder(dividingBy: 1)
+                        piece.shape
+                            .position(x: piece.x * w,
+                                      y: -0.15 * h + progress * 1.30 * h)
+                            .rotationEffect(.degrees(piece.spin * progress))
+                    }
                 }
             }
         }
         .allowsHitTesting(false)
         .ignoresSafeArea()
-        .onAppear { animate = true }
+    }
+}
+
+#Preview {
+    ZStack {
+        Color(white: 0.9)
+        CelebrationView()
     }
 }
 
@@ -37,9 +46,9 @@ private struct ConfettiPiece: Identifiable {
     let x: CGFloat          // horizontal position, 0...1 of the width
     let size: CGFloat
     let color: Color
-    let spin: Double
-    let duration: Double
-    let delay: Double
+    let spin: Double        // total degrees turned over one fall
+    let duration: Double    // seconds for one top-to-bottom fall
+    let phase: Double       // 0…1 starting offset so pieces don't fall in lockstep
     let kind: Kind
 
     enum Kind { case cherry, circle, ribbon }
@@ -72,8 +81,8 @@ private struct ConfettiPiece: Identifiable {
                 size: CGFloat.random(in: 9...20),
                 color: colors.randomElement()!,
                 spin: Double.random(in: 240...1200) * (Bool.random() ? 1 : -1),
-                duration: Double.random(in: 1.6...3.4),
-                delay: Double.random(in: 0...1.4),
+                duration: Double.random(in: 2.2...4.6),
+                phase: Double.random(in: 0...1),
                 kind: kinds.randomElement()!
             )
         }

@@ -24,6 +24,8 @@ struct GameView: View {
 
                 header
 
+                Spacer(minLength: 0)
+
                 board(side: side)
 
                 if model.isHighlightMode {
@@ -31,6 +33,8 @@ struct GameView: View {
                         .frame(width: side)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 }
+
+                Spacer(minLength: 0)
 
                 controls
 
@@ -143,6 +147,12 @@ struct GameView: View {
                     .frame(maxWidth: side - 16)
                     .padding(6)
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
+                    .task(id: model.hintPulse) {
+                        // Auto-dismiss after 10s. (Tapping the board also dismisses it,
+                        // since any move clears the hint.) Re-armed per hint via the id.
+                        try? await Task.sleep(for: .seconds(10))
+                        model.dismissHint()
+                    }
             }
         }
         .animation(.spring(duration: 0.3), value: model.hintMessage)
