@@ -4,9 +4,13 @@ import SwiftUI
 /// mode) the guess bar. The layout is fixed — it never scrolls — sizing the board to
 /// whatever space is left after the chrome so everything fits on one screen.
 struct GameView: View {
-    @State private var model = GameViewModel()
+    @State private var model: GameViewModel
     @State private var showNewConfirm = false
     @State private var showClearConfirm = false
+
+    init(model: GameViewModel? = nil) {
+        _model = State(initialValue: model ?? GameViewModel())
+    }
 
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
@@ -345,5 +349,12 @@ private struct ToolButton: View {
 }
 
 #Preview {
-    GameView()
+    // A partially-solved board, for App Store screenshots and layout checks.
+    let model = GameViewModel()
+    let cells = model.puzzle.solution.sorted { ($0.row, $0.col) < ($1.row, $1.col) }
+    for p in cells.prefix(13) {
+        model.tap(row: p.row, col: p.col)   // empty -> dot
+        model.tap(row: p.row, col: p.col)   // dot -> cherry (+ auto-dots)
+    }
+    return GameView(model: model)
 }
