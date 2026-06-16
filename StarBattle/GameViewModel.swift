@@ -30,6 +30,9 @@ final class GameViewModel {
     private(set) var checkPulse = 0
     /// Whether the most recent check found any incorrect stars.
     private(set) var lastCheckHadErrors = false
+    /// Bumped several times in quick succession when "Check" finds a wrong cherry, so
+    /// the view can play a strong, buzzing "that's wrong" rumble.
+    private(set) var wrongPulse = 0
 
     /// Bumped on every action; the view watches it to fire a tap haptic.
     private(set) var tapPulse = 0
@@ -467,6 +470,17 @@ final class GameViewModel {
         wrongStars = Set(wrong)
         lastCheckHadErrors = !wrong.isEmpty
         checkPulse &+= 1
+        if lastCheckHadErrors { playWrongHaptics() }
+    }
+
+    /// A short, strong buzz of heavy impacts to signal a wrong placement.
+    private func playWrongHaptics() {
+        Task { @MainActor in
+            for _ in 0..<5 {
+                wrongPulse &+= 1
+                try? await Task.sleep(for: .milliseconds(80))
+            }
+        }
     }
 
     /// Drops any "Check" highlight; called whenever the board changes.

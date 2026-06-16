@@ -7,6 +7,7 @@ struct GameView: View {
     @State private var model: GameViewModel
     @State private var showNewConfirm = false
     @State private var showClearConfirm = false
+    @State private var showHintConfirm = false
 
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
@@ -20,7 +21,8 @@ struct GameView: View {
     var body: some View {
         GeometryReader { geo in
             // Reserve room for the chrome so the square board fits without scrolling.
-            let chrome: CGFloat = 150 + (model.isHighlightMode ? 70 : 0)
+            // Mark mode swaps the two-row bar for a single button, plus the guess bar.
+            let chrome: CGFloat = model.isHighlightMode ? 210 : 228
             let side = max(140, min(geo.size.width - 32, geo.size.height - chrome, 620))
 
             VStack(spacing: 14) {
@@ -40,7 +42,11 @@ struct GameView: View {
 
                 Spacer(minLength: 0)
 
-                controls
+                if model.isHighlightMode {
+                    exitMarkButton
+                } else {
+                    controls
+                }
 
                 Spacer(minLength: 0)
             }
@@ -69,6 +75,13 @@ struct GameView: View {
         } message: {
             Text("This removes all your marks and guesses.")
         }
+        .confirmationDialog("Show a hint?", isPresented: $showHintConfirm,
+                            titleVisibility: .visible) {
+            Button("Show Hint") { model.hint(item: pieceStyle.noun, items: pieceStyle.plural) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This places the next logical move and explains why.")
+        }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
                                        : .impact(weight: .light, intensity: 0.6)
@@ -82,6 +95,10 @@ struct GameView: View {
         }
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
             model.lastCheckHadErrors ? .error : .success
+        }
+        // A strong, repeated buzz when Check reveals a wrong cherry.
+        .sensoryFeedback(trigger: model.wrongPulse) { _, _ in
+            .impact(weight: .heavy, intensity: 1.0)
         }
         .sensoryFeedback(trigger: model.hintPulse) { _, _ in .impact(weight: .medium) }
         .task {
@@ -202,25 +219,42 @@ struct GameView: View {
     // MARK: - Controls
 
     private var controls: some View {
-        HStack(spacing: 6) {
-            ToolButton(title: "New", systemImage: "sparkles", style: .prominent) {
-                showNewConfirm = true
+        VStack(spacing: 10) {
+            HStack(spacing: 10) {
+                ToolButton(title: "New", systemImage: "sparkles", style: .prominent) {
+                    showNewConfirm = true
+                }
+                ToolButton(title: "Hint", systemImage: "lightbulb",
+                           isEnabled: model.canHint) { showHintConfirm = true }
+                ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
+                ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
+                           style: model.isHighlightMode ? .active : .normal) {
+                    model.toggleHighlightMode()
+                }
             }
-            ToolButton(title: "Undo", systemImage: "arrow.uturn.backward",
-                       isEnabled: model.canUndo) { model.undo() }
-            ToolButton(title: "Redo", systemImage: "arrow.uturn.forward",
-                       isEnabled: model.canRedo) { model.redo() }
-            ToolButton(title: "Hint", systemImage: "lightbulb",
-                       isEnabled: model.canHint) {
-                model.hint(item: pieceStyle.noun, items: pieceStyle.plural)
-            }
-            ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
-            ToolButton(title: "Clear", systemImage: "trash") { showClearConfirm = true }
-            ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
-                       style: model.isHighlightMode ? .active : .normal) {
-                model.toggleHighlightMode()
+            HStack(spacing: 10) {
+                ToolButton(title: "Undo", systemImage: "arrow.uturn.backward",
+                           isEnabled: model.canUndo) { model.undo() }
+                ToolButton(title: "Redo", systemImage: "arrow.uturn.forward",
+                           isEnabled: model.canRedo) { model.redo() }
+                ToolButton(title: "Clear", systemImage: "trash") { showClearConfirm = true }
             }
         }
+        .disabled(model.isGenerating || model.isRealizing)
+    }
+
+    /// Shown in place of the full bar while in Mark mode — the only way out.
+    private var exitMarkButton: some View {
+        Button {
+            model.toggleHighlightMode()
+        } label: {
+            Label("Exit Mark Mode", systemImage: "highlighter")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 16)
+        }
+        .buttonStyle(.borderedProminent)
+        .tint(.purple)
         .disabled(model.isGenerating || model.isRealizing)
     }
 
@@ -314,25 +348,27 @@ private struct ToolButton: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 5) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 23, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 10, weight: .medium))
+                    .font(.system(size: 12, weight: .medium))
                     .lineLimit(1)
                     .minimumScaleFactor(0.7)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
+            .padding(.vertical, 14)
             .foregroundStyle(foreground)
-            .background(background, in: RoundedRectangle(cornerRadius: 12))
+            .background(background, in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
-        .opacity(isEnabled ? 1 : 0.4)
     }
 
     private var foreground: Color {
+        // A medium, appearance-adaptive grey reads clearly in both light and dark,
+        // unlike a faded tint.
+        guard isEnabled else { return .secondary }
         switch style {
         case .normal:   return tint
         case .prominent, .active: return .white
@@ -340,6 +376,7 @@ private struct ToolButton: View {
     }
 
     private var background: Color {
+        guard isEnabled else { return .secondary.opacity(0.18) }
         switch style {
         case .normal:    return tint.opacity(0.14)
         case .prominent: return .accentColor
@@ -356,5 +393,16 @@ private struct ToolButton: View {
         model.tap(row: p.row, col: p.col)   // empty -> dot
         model.tap(row: p.row, col: p.col)   // dot -> cherry (+ auto-dots)
     }
+    return GameView(model: model)
+}
+
+#Preview("Mark mode") {
+    let model = GameViewModel()
+    let cells = model.puzzle.solution.sorted { ($0.row, $0.col) < ($1.row, $1.col) }
+    for p in cells.prefix(8) {
+        model.tap(row: p.row, col: p.col)
+        model.tap(row: p.row, col: p.col)
+    }
+    model.toggleHighlightMode()
     return GameView(model: model)
 }
