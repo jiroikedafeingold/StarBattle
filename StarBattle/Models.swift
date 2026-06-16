@@ -1,13 +1,13 @@
 import Foundation
 
 /// A coordinate on the puzzle grid.
-struct GridPosition: Hashable, Codable {
+nonisolated struct GridPosition: Hashable, Codable {
     var row: Int
     var col: Int
 }
 
 /// What the player has placed in a cell.
-enum CellMark: Equatable {
+nonisolated enum CellMark: Equatable {
     /// Nothing placed.
     case empty
     /// A cherry (the goal mark). Named `star` for historical reasons.
@@ -18,7 +18,7 @@ enum CellMark: Equatable {
 
 /// A background "guess" colour painted in Highlight mode. It sits behind any mark
 /// and is only committed to real marks when the player taps "Realize".
-enum CellHighlight: Equatable {
+nonisolated enum CellHighlight: Equatable {
     /// No highlight — the cell shows its normal region tint.
     case none
     /// White — the player is guessing this square WILL be a cherry.
@@ -32,7 +32,7 @@ enum CellHighlight: Equatable {
 /// A puzzle is defined entirely by its region layout. The `solution` is kept
 /// alongside it for reference, but the player never needs it — every puzzle the
 /// generator produces is guaranteed to have exactly one valid solution.
-struct Puzzle: Codable {
+nonisolated struct Puzzle: Codable {
     /// Width and height of the (square) grid, e.g. 10.
     let size: Int
     /// Number of cherries required in each row, column and region, e.g. 2.

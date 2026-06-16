@@ -1,37 +1,44 @@
 import SwiftUI
 
-/// The full game screen: title, timer, board, controls and a win banner.
+/// The Play screen: title, optional timer, board, the action row and (in Highlight
+/// mode) the guess bar. The layout is fixed — it never scrolls — sizing the board to
+/// whatever space is left after the chrome so everything fits on one screen.
 struct GameView: View {
     @State private var model = GameViewModel()
     @State private var showNewConfirm = false
     @State private var showClearConfirm = false
 
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
+
+    private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+
     var body: some View {
         GeometryReader { geo in
-            // Size the board to the full available width so it fills the screen in
-            // both normal and Highlight mode. The layout scrolls only if a smaller
-            // device can't fit everything at once.
-            let side = min(geo.size.width, 560) - 32
-            ScrollView {
-                VStack(spacing: 16) {
-                    header
+            // Reserve room for the chrome so the square board fits without scrolling.
+            let chrome: CGFloat = 150 + (model.isHighlightMode ? 70 : 0)
+            let side = max(140, min(geo.size.width - 32, geo.size.height - chrome, 620))
 
-                    board(side: side)
+            VStack(spacing: 14) {
+                Spacer(minLength: 0)
 
-                    if model.isHighlightMode {
-                        highlightBar
-                            .transition(.move(edge: .top).combined(with: .opacity))
-                    }
+                header
 
-                    controls
+                board(side: side)
 
-                    legend
+                if model.isHighlightMode {
+                    highlightBar
+                        .frame(width: side)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                 }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .frame(minHeight: geo.size.height, alignment: .top)
+
+                controls
+
+                Spacer(minLength: 0)
             }
-            .scrollBounceBehavior(.basedOnSize)
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .overlay {
             if model.isSolved {
@@ -68,6 +75,7 @@ struct GameView: View {
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
             model.lastCheckHadErrors ? .error : .success
         }
+        .sensoryFeedback(trigger: model.hintPulse) { _, _ in .impact(weight: .medium) }
         .task {
             // A simple one-second timer that runs while a puzzle is in progress.
             while !Task.isCancelled {
@@ -82,15 +90,18 @@ struct GameView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(spacing: 4) {
-            Text("Cherry Battle")
-                .font(.largeTitle.bold())
+        VStack(spacing: 2) {
+            Text("Cherry Bomb")
+                .font(.title.bold())
             Text("Place 2 cherries in every row, column and region")
-                .font(.subheadline)
+                .font(.caption)
                 .foregroundStyle(.secondary)
-            Label(timeString, systemImage: "clock")
-                .font(.title3.monospacedDigit())
-                .padding(.top, 2)
+                .multilineTextAlignment(.center)
+            if !hideTimer {
+                Label(timeString, systemImage: "clock")
+                    .font(.headline.monospacedDigit())
+                    .padding(.top, 2)
+            }
         }
     }
 
@@ -103,21 +114,45 @@ struct GameView: View {
                 marks: model.marks,
                 highlights: model.highlights,
                 wrongStars: model.wrongStars,
+                pieceStyle: pieceStyle,
+                hintCell: model.hintFocus,
                 onTap: { row, col in model.tap(row: row, col: col) },
                 onDragBegin: { model.beginDrag() },
                 onDragPaint: { start, end in model.dragPaint(from: start, to: end) },
                 onDragEnd: { model.endDrag() }
             )
             .frame(width: side, height: side)
-            .opacity(model.isGenerating ? 0.15 : 1)
+            .opacity(model.isGenerating ? 0.12 : 1)
 
             if model.isGenerating {
-                ProgressView("Creating a new board…")
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                VStack(spacing: 12) {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Creating a new board…")
+                        .font(.headline)
+                }
+                .padding(28)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .shadow(radius: 8)
             }
         }
         .frame(width: side, height: side)
+        .overlay(alignment: hintAlignment) {
+            if let message = model.hintMessage {
+                HintBubble(text: message) { model.dismissHint() }
+                    .frame(maxWidth: side - 16)
+                    .padding(6)
+                    .transition(.scale(scale: 0.85).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(duration: 0.3), value: model.hintMessage)
+    }
+
+    /// Keep the explanation away from the highlighted square: anchor it to whichever
+    /// edge of the board the square is *not* near.
+    private var hintAlignment: Alignment {
+        guard let focus = model.hintFocus else { return .top }
+        return focus.row < model.puzzle.size / 2 ? .bottom : .top
     }
 
     // MARK: - Celebration
@@ -153,58 +188,24 @@ struct GameView: View {
     // MARK: - Controls
 
     private var controls: some View {
-        VStack(spacing: 10) {
-            HStack(spacing: 10) {
-                Button {
-                    showNewConfirm = true
-                } label: {
-                    Label("New", systemImage: "sparkles").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-
-                Button {
-                    model.undo()
-                } label: {
-                    Label("Undo", systemImage: "arrow.uturn.backward").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .disabled(!model.canUndo)
+        HStack(spacing: 6) {
+            ToolButton(title: "New", systemImage: "sparkles", style: .prominent) {
+                showNewConfirm = true
             }
-
-            HStack(spacing: 10) {
-                Button {
-                    showClearConfirm = true
-                } label: {
-                    Label("Clear", systemImage: "trash").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-
-                Button {
-                    model.check()
-                } label: {
-                    Label("Check", systemImage: "checkmark.seal").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
+            ToolButton(title: "Undo", systemImage: "arrow.uturn.backward",
+                       isEnabled: model.canUndo) { model.undo() }
+            ToolButton(title: "Redo", systemImage: "arrow.uturn.forward",
+                       isEnabled: model.canRedo) { model.redo() }
+            ToolButton(title: "Hint", systemImage: "lightbulb",
+                       isEnabled: model.canHint) { model.hint() }
+            ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
+            ToolButton(title: "Clear", systemImage: "trash") { showClearConfirm = true }
+            ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
+                       style: model.isHighlightMode ? .active : .normal) {
+                model.toggleHighlightMode()
             }
-
-            highlightToggle
         }
         .disabled(model.isGenerating || model.isRealizing)
-    }
-
-    @ViewBuilder private var highlightToggle: some View {
-        let label = Label(model.isHighlightMode ? "Exit Highlight Mode" : "Highlight Mode",
-                          systemImage: "highlighter")
-            .frame(maxWidth: .infinity)
-        if model.isHighlightMode {
-            Button { model.toggleHighlightMode() } label: { label }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-        } else {
-            Button { model.toggleHighlightMode() } label: { label }
-                .buttonStyle(.bordered)
-                .tint(.purple)
-        }
     }
 
     // MARK: - Highlight mode bar (under the board)
@@ -236,7 +237,7 @@ struct GameView: View {
             RoundedRectangle(cornerRadius: 8)
                 .fill(fill)
                 .frame(width: 46, height: 46)
-                .overlay(GuessGlyph(highlight: kind, cellSize: 46))
+                .overlay(GuessGlyph(highlight: kind, pieceStyle: pieceStyle, cellSize: 46))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(selected ? Color.purple : Color.secondary.opacity(0.5),
@@ -247,24 +248,87 @@ struct GameView: View {
         .disabled(model.isRealizing)
     }
 
-    // MARK: - Legend
-
-    private var legend: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label("Tap a cell to cycle: empty → • dot → 🍒 cherry → empty", systemImage: "hand.tap")
-            Label("Cherries may never touch — not even diagonally", systemImage: "exclamationmark.triangle")
-        }
-        .font(.footnote)
-        .foregroundStyle(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
     // MARK: - Helpers
 
     private var timeString: String {
         let minutes = model.elapsedSeconds / 60
         let seconds = model.elapsedSeconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+/// The hint explanation, shown beside (never over) the highlighted square. Tapping
+/// it — or the close button — dismisses it.
+private struct HintBubble: View {
+    let text: String
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "lightbulb.fill")
+                .foregroundStyle(.blue)
+            Text(text)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
+            Button(action: onDismiss) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
+        .shadow(radius: 6)
+        .contentShape(RoundedRectangle(cornerRadius: 14))
+        .onTapGesture(perform: onDismiss)
+    }
+}
+
+/// A compact action button: an icon above a small caption, sized to share a row
+/// equally with its siblings.
+private struct ToolButton: View {
+    enum Style { case normal, prominent, active }
+
+    let title: String
+    let systemImage: String
+    var tint: Color = .accentColor
+    var style: Style = .normal
+    var isEnabled: Bool = true
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                Text(title)
+                    .font(.system(size: 10, weight: .medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .foregroundStyle(foreground)
+            .background(background, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.4)
+    }
+
+    private var foreground: Color {
+        switch style {
+        case .normal:   return tint
+        case .prominent, .active: return .white
+        }
+    }
+
+    private var background: Color {
+        switch style {
+        case .normal:    return tint.opacity(0.14)
+        case .prominent: return .accentColor
+        case .active:    return tint
+        }
     }
 }
 

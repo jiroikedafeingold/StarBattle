@@ -12,7 +12,7 @@ import Foundation
 ///      alternate solution exists, nudge a region boundary to destroy it (see
 ///      `killAlternate`). Attacking a *random* alternate avoids cycles. This
 ///      converges on a layout whose only solution is the one we started with.
-enum PuzzleGenerator {
+nonisolated enum PuzzleGenerator {
 
     /// Async entry point so generation runs off the main actor.
     static func generate(size: Int = 10, stars: Int = 2) async -> Puzzle {
@@ -520,7 +520,7 @@ enum PuzzleGenerator {
 /// a flat array; per-unit star/blank counts are kept up to date so propagation only
 /// touches the cells that change, and trial assumptions are undone via a journal
 /// rather than by copying the whole grid.
-private final class LogicBoard {
+private nonisolated final class LogicBoard {
     private let size: Int
     private let stars: Int
     private let regionOf: [Int]          // cell index -> region id

@@ -1,11 +1,11 @@
-# Cherry Battle — Project Context
+# Cherry Bomb — Project Context
 
 A SwiftUI logic-puzzle game (a "Star Battle" variant, re-themed to cherries) for
 iPhone and iPad. The player places **two cherries in every row, column and region**
 of a 10×10 grid, where no two cherries may touch — not even diagonally.
 
-> **Naming note:** the product is presented to users as **Cherry Battle**
-> (`INFOPLIST_KEY_CFBundleDisplayName = "Cherry Battle"`), and all on-screen text
+> **Naming note:** the product is presented to users as **Cherry Bomb**
+> (`INFOPLIST_KEY_CFBundleDisplayName = "Cherry Bomb"`), and all on-screen text
 > and artwork use cherries. The **Xcode project, target, scheme, source folder and
 > many internal identifiers are still named `StarBattle` / `star`** (e.g.
 > `CellMark.star`, `Puzzle.starsPerUnit`, `wrongStars`, `guessStar`). These were
@@ -23,22 +23,47 @@ of a 10×10 grid, where no two cherries may touch — not even diagonally.
 
 ## File map (`StarBattle/StarBattle/`)
 - `StarBattleApp.swift` — `@main` app entry → `ContentView`.
-- `ContentView.swift` — hosts `GameView`.
-- `GameView.swift` — the whole game screen: header, board, controls, highlight bar,
-  legend, win celebration, confirmation dialogs, and all haptics
-  (`.sensoryFeedback`). Board is sized to the **full screen width** in both normal
-  and Highlight mode via a `GeometryReader` (`side = min(width,560) - 32`) and a
-  `ScrollView` so smaller devices can scroll if needed.
+- `ContentView.swift` — root **`TabView`** (Play / Help / Settings), applies the
+  app-wide light/dark `.preferredColorScheme` from settings, and presents
+  `OnboardingView` as a `fullScreenCover` on first launch (`hasSeenOnboarding`).
+- `AppSettings.swift` — `@AppStorage` keys + the `PieceStyle` (cherry/star/queen/
+  diamond/heart) and `AppearanceMode` (system/light/dark) enums.
+- `GameView.swift` — the Play screen: header (+ optional timer), board, the action
+  row, Highlight bar, win celebration, dialogs, the Hint alert, and all haptics. The
+  layout is **fixed (no scrolling)**: a `GeometryReader` sizes the square board to
+  the space left after the chrome (`side = min(width-32, height-chrome, 620)`), so it
+  fills small iPhones and centers (capped at 620) on iPad. Actions are a single row
+  of icon+caption `ToolButton`s: New · Undo · Redo · Hint · Check · Clear · Mark.
+- `PieceView.swift` — renders the placed piece / guess-ghost per `PieceStyle`:
+  `.cherry` is the custom-drawn `CherryView`; the rest are tintable SF Symbols.
+- `HintEngine.swift` — `HintEngine.nextHint(puzzle:marks:)` returns the next
+  logically-forced move + a plain-English reason (or mistake/stuck/solved). Seeds a
+  constraint model from the player's **confirmed cherries only** and replays sound
+  techniques (exact-fit, unit-complete, no-touch, single-cell contradiction) one step
+  at a time — the same power as the generator's `LogicBoard`.
+- `HelpView.swift` — rules, solving tactics, a "Replay the tutorial" button, and the
+  credits (Star Battle by Hans Eendebak).
+- `SettingsView.swift` — appearance, piece picker, hide-timer toggle (all `@AppStorage`).
+- `OnboardingView.swift` — paged tutorial shown on first launch and replayable from Help.
 - `GameViewModel.swift` — live game state: `marks` (`[[CellMark]]`), `highlights`
-  (Highlight/guess layer), undo `history`, auto-dot ref-counting, win detection,
-  prefetch queue. Key bits:
+  (Highlight/guess layer), undo `history` + **redo** stack, auto-dot ref-counting,
+  `hint()`, win detection, prefetch queue. Key bits:
   - **Auto-dots:** placing a cherry dots its 8 neighbours (ref-counted so shared
     neighbours and hand-placed dots survive correctly). Mirrored for the guess layer.
   - **Highlight mode:** paint "will be a cherry" (white/pale-yellow) or "not a
     cherry" (grey) guesses, then `realizeGuesses()` commits them one-by-one.
   - **Prefetch:** `topUpPrefetch()` keeps `prefetchDepth` (2) puzzles generating off
-    the main actor via `Task.detached`, so "New" is usually instant. On-demand
-    generation shows the "Creating a new board…" overlay.
+    the main actor, so "New" is usually instant. Builds are **chained** (each waits
+    on the previous) at `.background` priority so they don't all run at once. The
+    "Creating a new board…" overlay shows for a short minimum so it always reads.
+    **Important:** this project builds with *main-actor-by-default* isolation, so the
+    pure data/computation types (`GridPosition`, `CellMark`, `CellHighlight`,
+    `Puzzle`, `PuzzleGenerator`, its `LogicBoard`, `Puzzle.starters`) are marked
+    `nonisolated` — otherwise generation silently hops back to the **main thread**
+    (the original cause of launch jank).
+  - **Hint / Redo:** `hint()` applies `HintEngine`'s next move and stores the reason
+    in `hintMessage`; `redo()` complements `undo()` via a `redoStack` cleared on any
+    fresh action. The Highlight drag never overwrites a cherry guess or placed cherry.
   - **Celebration haptics:** on first solve, `playCelebrationHaptics()` bumps
     `celebrationPulse` 9× (~110 ms apart); the view fires a `.heavy` impact each bump
     for a strong rolling rumble, plus a `.success`.

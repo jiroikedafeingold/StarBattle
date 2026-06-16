@@ -60,8 +60,23 @@ final class GameViewModel {
 
     /// Full board snapshots captured before each action, for Undo.
     private var history: [Snapshot] = []
+    /// States popped by Undo, so they can be reapplied with Redo. Cleared whenever
+    /// a fresh action is taken.
+    private var redoStack: [Snapshot] = []
     private let historyLimit = 200
     var canUndo: Bool { !history.isEmpty }
+    var canRedo: Bool { !redoStack.isEmpty }
+
+    /// The explanation for the most recent Hint, shown to the player. Setting it to
+    /// nil dismisses the message.
+    var hintMessage: String?
+    /// The cell the current hint refers to, so the board can highlight it and the
+    /// explanation can be positioned beside it. Nil when a hint has no single cell.
+    private(set) var hintFocus: GridPosition?
+    /// Bumped each time a hint is given, so the view can fire a haptic.
+    private(set) var hintPulse = 0
+    /// Whether a hint can be requested right now.
+    var canHint: Bool { !isGenerating && !isSolved && !isRealizing && !isHighlightMode }
 
     private struct Snapshot {
         let marks: [[CellMark]]
@@ -77,6 +92,11 @@ final class GameViewModel {
     /// taps. Kept topped up to `prefetchDepth`.
     private var prefetchQueue: [Task<Puzzle, Never>] = []
     private let prefetchDepth = 2
+    /// The most recently scheduled generation. Each new build waits on it before
+    /// starting, so the (CPU-heavy) builds run one-at-a-time instead of all at once
+    /// — two concurrent builds used to starve the main thread and make the board
+    /// feel unresponsive right after launch.
+    private var prefetchTail: Task<Puzzle, Never>?
 
     init() {
         // Show a real, playable board immediately — no spinner on launch — while the
@@ -88,9 +108,13 @@ final class GameViewModel {
         highlights = Self.emptyHighlights(size: launch.size)
         isGenerating = false
 
-        // Don't spin up background generation inside SwiftUI previews.
+        // Don't spin up background generation inside SwiftUI previews. Defer it a
+        // beat so the first frame and the first taps stay smooth on launch.
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-            topUpPrefetch()
+            Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(250))
+                self?.topUpPrefetch()
+            }
         }
     }
 
@@ -103,11 +127,19 @@ final class GameViewModel {
         isSolved = false
         elapsedSeconds = 0
 
+        // Keep the "Creating a new board…" indicator on screen long enough to read,
+        // even when a prefetched puzzle is ready instantly.
+        let start = ContinuousClock.now
         let fresh: Puzzle
         if !prefetchQueue.isEmpty {
             fresh = await prefetchQueue.removeFirst().value
         } else {
             fresh = await PuzzleGenerator.generate()
+        }
+        let minimumShown = Duration.milliseconds(450)
+        let elapsed = start.duration(to: ContinuousClock.now)
+        if elapsed < minimumShown {
+            try? await Task.sleep(for: minimumShown - elapsed)
         }
 
         puzzle = fresh
@@ -116,7 +148,9 @@ final class GameViewModel {
         autoDotCount.removeAll()
         highlightAutoDotCount.removeAll()
         history.removeAll()
+        redoStack.removeAll()
         clearCheck()
+        dismissHint()
         isHighlightMode = false
         isGenerating = false
 
@@ -128,9 +162,14 @@ final class GameViewModel {
     /// Each finished puzzle is also saved to the on-disk pool for launch variety.
     private func topUpPrefetch() {
         while prefetchQueue.count < prefetchDepth {
-            let task = Task.detached(priority: .utility) {
-                PuzzleGenerator.buildPuzzle()
+            // Chain each build onto the previous one so they run sequentially at low
+            // priority rather than competing for the CPU all at once.
+            let previous = prefetchTail
+            let task = Task.detached(priority: .background) { () -> Puzzle in
+                _ = await previous?.value
+                return PuzzleGenerator.buildPuzzle()
             }
+            prefetchTail = task
             prefetchQueue.append(task)
             Task { [weak self] in
                 let puzzle = await task.value
@@ -200,26 +239,47 @@ final class GameViewModel {
     }
 
     /// Reverts the most recent action, restoring the exact board that preceded it.
+    /// The state being undone is kept so it can be reapplied with Redo.
     func undo() {
         guard !isGenerating, !isRealizing, let snapshot = history.popLast() else { return }
+        redoStack.append(currentSnapshot())
+        restore(snapshot)
+    }
+
+    /// Reapplies the most recently undone action.
+    func redo() {
+        guard !isGenerating, !isRealizing, let snapshot = redoStack.popLast() else { return }
+        history.append(currentSnapshot())
+        restore(snapshot)
+    }
+
+    /// Restores a captured board, refreshing derived state.
+    private func restore(_ snapshot: Snapshot) {
         marks = snapshot.marks
         autoDotCount = snapshot.autoDotCount
         highlights = snapshot.highlights
         highlightAutoDotCount = snapshot.highlightAutoDotCount
         clearCheck()
+        dismissHint()
         lastActionPlacedStar = false
         tapPulse &+= 1
         evaluateWin()
     }
 
-    /// Records the current board so the next action can be undone.
+    private func currentSnapshot() -> Snapshot {
+        Snapshot(marks: marks, autoDotCount: autoDotCount,
+                 highlights: highlights, highlightAutoDotCount: highlightAutoDotCount)
+    }
+
+    /// Records the current board so the next action can be undone. Taking a fresh
+    /// action invalidates any redo history.
     private func pushHistory() {
-        history.append(Snapshot(marks: marks, autoDotCount: autoDotCount,
-                                highlights: highlights,
-                                highlightAutoDotCount: highlightAutoDotCount))
+        history.append(currentSnapshot())
         if history.count > historyLimit {
             history.removeFirst(history.count - historyLimit)
         }
+        redoStack.removeAll()
+        dismissHint()
     }
 
     // MARK: - Drag-to-mark
@@ -252,6 +312,10 @@ final class GameViewModel {
         let cells = Self.lineCells(from: start, to: end)
         if isHighlightMode {
             for cell in cells where !dragPaintedGuessCells.contains(cell) {
+                // A drag must never erase a cherry guess or a placed cherry — only
+                // paint onto cells that don't already hold one.
+                if highlights[cell.row][cell.col] == .guessStar { continue }
+                if marks[cell.row][cell.col] == .star { continue }
                 placeGuess(at: cell)
                 dragPaintedGuessCells.insert(cell)
             }
@@ -410,12 +474,54 @@ final class GameViewModel {
         if !wrongStars.isEmpty { wrongStars.removeAll() }
     }
 
+    // MARK: - Hint
+
+    /// Works out the next logically-forced move, places it on the board, and stores
+    /// an explanation in `hintMessage` for the view to show. If the player has an
+    /// incorrect cherry, or the position needs a guess, nothing is placed and the
+    /// message says so.
+    func hint() {
+        guard canHint else { return }
+        let result = HintEngine.nextHint(puzzle: puzzle, marks: marks)
+
+        if result.outcome == .place, let pos = result.position {
+            pushHistory()
+            clearCheck()
+            if result.placesStar {
+                if marks[pos.row][pos.col] != .star {
+                    autoDotCount[pos] = nil          // this cell is becoming a cherry
+                    marks[pos.row][pos.col] = .star
+                    addAutoDots(around: pos)
+                }
+                lastActionPlacedStar = true
+            } else {
+                marks[pos.row][pos.col] = .dot
+                lastActionPlacedStar = false
+            }
+            tapPulse &+= 1
+            evaluateWin()
+        }
+
+        // Highlight the relevant square (the placed cell, or the offending one for a
+        // mistake) so the explanation can sit beside it.
+        hintFocus = result.position
+        hintMessage = result.message
+        hintPulse &+= 1
+    }
+
+    /// Dismisses the current hint highlight and explanation.
+    func dismissHint() {
+        hintMessage = nil
+        hintFocus = nil
+    }
+
     // MARK: - Highlight (guessing) mode
 
     /// Enters or leaves Highlight mode. Leaving keeps the painted guesses on the
     /// board — it only changes what tapping does.
     func toggleHighlightMode() {
         guard !isRealizing else { return }
+        dismissHint()
         isHighlightMode.toggle()
     }
 

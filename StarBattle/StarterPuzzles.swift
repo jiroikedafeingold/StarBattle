@@ -5,7 +5,7 @@ extension Puzzle {
     /// launch (and used as a last-resort fallback) so the player never waits for the
     /// generator to warm up. Each string is one grid row; every character is that
     /// cell's region id (ids are single digits 0…9).
-    private static let starterLayouts: [[String]] = [
+    private nonisolated static let starterLayouts: [[String]] = [
         [
             "9000888888",
             "9000444888",
@@ -81,11 +81,11 @@ extension Puzzle {
     ]
 
     /// The parsed starter puzzles, built once on first use.
-    static let starters: [Puzzle] = starterLayouts.compactMap { Puzzle(regionRows: $0) }
+    nonisolated static let starters: [Puzzle] = starterLayouts.compactMap { Puzzle(regionRows: $0) }
 
     /// Builds a puzzle from `n` rows of `n` single-digit region ids, deriving the
     /// unique solution with the solver. Returns nil if the layout is malformed.
-    init?(regionRows: [String]) {
+    nonisolated init?(regionRows: [String]) {
         let size = regionRows.count
         var regions: [[Int]] = []
         for row in regionRows {
