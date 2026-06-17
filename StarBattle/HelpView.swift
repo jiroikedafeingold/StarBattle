@@ -24,6 +24,12 @@ struct HelpView: View {
                          "Solve it when all \(piece.plural) are placed legally — the board celebrates!")
                 }
 
+                Section("See it") {
+                    RuleExamplesView(piece: piece)
+                        .listRowInsets(EdgeInsets())
+                        .padding(.vertical, 4)
+                }
+
                 Section("Tips & tactics") {
                     tip("square.dashed",
                         "Mark, don't guess",

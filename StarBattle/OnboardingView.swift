@@ -11,11 +11,17 @@ struct OnboardingView: View {
 
     private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
 
+    /// What a slide shows above its text.
+    private enum Art {
+        case piece
+        case symbol(String)
+        case neverTouch
+        case twoPerLine
+    }
+
     private struct Slide: Identifiable {
         let id = UUID()
-        /// When true, the slide shows the chosen game piece instead of `symbol`.
-        var showsPiece = false
-        var symbol = ""
+        var art: Art
         let tint: Color
         let title: String
         let body: String
@@ -23,19 +29,19 @@ struct OnboardingView: View {
 
     private var slides: [Slide] {
         [
-            Slide(showsPiece: true, tint: .red,
+            Slide(art: .piece, tint: .red,
                   title: "Welcome to Cherry Battle",
                   body: "A bite-size logic puzzle. Fill the board with \(piece.plural) using pure deduction — no luck required."),
-            Slide(symbol: "2.square.fill", tint: .orange,
+            Slide(art: .twoPerLine, tint: .orange,
                   title: "Two per line",
                   body: "Every row, every column, and every coloured region holds exactly two \(piece.plural)."),
-            Slide(symbol: "hand.raised.slash.fill", tint: .pink,
+            Slide(art: .neverTouch, tint: .pink,
                   title: "Never touching",
-                  body: "Two \(piece.plural) can never touch — not horizontally, vertically, or even diagonally. Use that to rule squares out."),
-            Slide(symbol: "hand.tap.fill", tint: .purple,
+                  body: "Two \(piece.plural) can never touch — not horizontally, vertically, or even diagonally. Each one rules out all eight neighbours."),
+            Slide(art: .symbol("hand.tap.fill"), tint: .purple,
                   title: "Mark as you go",
                   body: "Tap a square to cycle it: empty → a dot (your “no \(piece.noun) here” note) → a \(piece.noun) → empty. Drag to lay a quick line of dots."),
-            Slide(symbol: "lightbulb.fill", tint: .green,
+            Slide(art: .symbol("lightbulb.fill"), tint: .green,
                   title: "Helpers when you need them",
                   body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and Realize it, and Undo or Redo anytime.")
         ]
@@ -68,17 +74,9 @@ struct OnboardingView: View {
 
     private func slideView(_ slide: Slide) -> some View {
         VStack(spacing: 24) {
-            Group {
-                if slide.showsPiece {
-                    PieceView(style: piece, isWrong: false, size: 110)
-                } else {
-                    Image(systemName: slide.symbol)
-                        .font(.system(size: 84, weight: .semibold))
-                        .foregroundStyle(slide.tint)
-                }
-            }
-            .frame(height: 120)
-            .padding(.bottom, 4)
+            art(for: slide)
+                .frame(height: 150)
+                .padding(.bottom, 4)
             Text(slide.title)
                 .font(.title.bold())
                 .multilineTextAlignment(.center)
@@ -89,6 +87,21 @@ struct OnboardingView: View {
                 .padding(.horizontal, 32)
         }
         .padding()
+    }
+
+    @ViewBuilder private func art(for slide: Slide) -> some View {
+        switch slide.art {
+        case .piece:
+            PieceView(style: piece, isWrong: false, size: 110)
+        case .symbol(let name):
+            Image(systemName: name)
+                .font(.system(size: 84, weight: .semibold))
+                .foregroundStyle(slide.tint)
+        case .neverTouch:
+            RuleDiagrams.neverTouch(piece: piece, cell: 46)
+        case .twoPerLine:
+            RuleDiagrams.twoPerLine(piece: piece, cell: 46)
+        }
     }
 
     private func advance() {
