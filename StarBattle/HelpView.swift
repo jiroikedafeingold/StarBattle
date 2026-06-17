@@ -12,22 +12,26 @@ struct HelpView: View {
         NavigationStack {
             List {
                 Section("How to play") {
-                    rule("2.square.fill",
-                         "Every row, column and coloured region holds exactly two \(piece.plural).")
-                    rule("hand.raised.slash.fill",
-                         "Two \(piece.plural) may never touch — not even diagonally.")
+                    ruleRow("2.square.fill",
+                            "Every row, column and coloured region holds exactly two \(piece.plural).") {
+                        inlineDiagram(RuleDiagrams.twoPerLine(piece: piece, cell: 26),
+                                      ok: true, label: "Two per line")
+                        inlineDiagram(RuleDiagrams.region(piece: piece, cell: 26),
+                                      label: "Two per region")
+                    }
+                    ruleRow("hand.raised.slash.fill",
+                            "Two \(piece.plural) may never touch — not even diagonally.") {
+                        inlineDiagram(RuleDiagrams.neverTouch(piece: piece, cell: 26),
+                                      label: "Blocks neighbours")
+                        inlineDiagram(RuleDiagrams.touchBad(piece: piece, cell: 26),
+                                      ok: false, label: "Not even diagonally")
+                    }
                     rule("hand.tap.fill",
                          "Tap a square to cycle it: empty → a dot → a \(piece.noun) → empty.")
                     rule("hand.draw.fill",
                          "Drag across a row or column to lay a line of dots quickly.")
                     rule("trophy.fill",
                          "Solve it when all \(piece.plural) are placed legally — the board celebrates!")
-                }
-
-                Section("See it") {
-                    RuleExamplesView(piece: piece)
-                        .listRowInsets(EdgeInsets())
-                        .padding(.vertical, 4)
                 }
 
                 Section("Tips & tactics") {
@@ -78,6 +82,40 @@ struct HelpView: View {
             Text(text)
         } icon: {
             Image(systemName: symbol).foregroundStyle(.red)
+        }
+    }
+
+    /// A rule with one or more example diagrams shown directly beneath it.
+    @ViewBuilder
+    private func ruleRow<Diagrams: View>(_ symbol: String, _ text: String,
+                                         @ViewBuilder diagrams: () -> Diagrams) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            rule(symbol, text)
+            HStack(alignment: .top, spacing: 22) {
+                diagrams()
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.vertical, 6)
+    }
+
+    /// A compact labelled diagram with an optional ✓/✗ badge, for use under a rule.
+    private func inlineDiagram(_ board: MiniBoard, ok: Bool? = nil, label: String) -> some View {
+        VStack(spacing: 6) {
+            board
+                .overlay(alignment: .topTrailing) {
+                    if let ok {
+                        Image(systemName: ok ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .font(.body)
+                            .foregroundStyle(.white, ok ? Color.green : Color.red)
+                            .background(Circle().fill(.white).padding(2))
+                            .offset(x: 7, y: -7)
+                    }
+                }
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
     }
 
