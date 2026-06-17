@@ -265,6 +265,13 @@ struct GameView: View {
             swatch(.guessStar, fill: .white)
             swatch(.guessEmpty, fill: Color(white: 0.55))
 
+            // Compact Undo/Redo, set a little apart from the guess swatches.
+            HStack(spacing: 8) {
+                miniButton("arrow.uturn.backward", enabled: model.canUndo) { model.undo() }
+                miniButton("arrow.uturn.forward", enabled: model.canRedo) { model.redo() }
+            }
+            .padding(.leading, 8)
+
             Spacer()
 
             Button {
@@ -296,6 +303,21 @@ struct GameView: View {
         }
         .buttonStyle(.plain)
         .disabled(model.isRealizing)
+    }
+
+    /// A small icon-only button (smaller than the swatches) for Undo/Redo in Mark mode.
+    private func miniButton(_ systemImage: String, enabled: Bool,
+                            action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 38, height: 38)
+                .foregroundStyle(enabled ? Color.accentColor : .secondary)
+                .background(enabled ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.18),
+                            in: RoundedRectangle(cornerRadius: 9))
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled || model.isRealizing)
     }
 
     // MARK: - Helpers
