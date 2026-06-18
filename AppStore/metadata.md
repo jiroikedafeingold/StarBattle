@@ -1,5 +1,18 @@
 # Cherry Battle — App Store metadata
 
+## What's New (1.0.6, ≤4000)
+Save & resume, a new Stats tab, and a clearer way to learn the rules.
+
+• Save & resume — leave anytime and pick up exactly where you left off.
+• New Stats tab — track games solved, your solve rate, and best & average times.
+• Learn by example — illustrated rule diagrams in the tutorial and Help show what “two per line” and “never touching” really look like.
+• Smarter hints — ask for the next logical move and see a clear explanation of why.
+• Make it yours — pick your piece (cherry, star, queen, diamond or heart), choose a light or dark theme, and hide the timer if you like.
+• Mark mode — pencil in a line of guesses, then tap “Do it” to commit them, with Undo/Redo right where you need them.
+• Polish — roomier two-row controls, a livelier falling-cherry win celebration, and stronger haptics when you check a wrong move.
+
+No ads, no accounts, fully offline. Thanks for playing!
+
 ## App name (≤30)
 Cherry Battle
 

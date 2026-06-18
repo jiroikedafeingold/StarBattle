@@ -117,14 +117,26 @@ enum HintEngine {
                 // Otherwise the player already knows this — keep deducing.
             }
 
-            // 4. Nothing more is forced.
+            // 4. Nothing more is forced by pure logic. This is rare — the generator
+            //    strongly favours logically-solvable boards — but as a safety net we
+            //    reveal a correct cell from the known solution so the player is never
+            //    left truly stuck (and never sees a discouraging "no move" message).
             let placed = state.lazy.filter { $0 == 1 }.count
             if placed >= quota * n {
                 return Hint(outcome: .solved, position: nil, placesStar: false,
                             message: "Every \(item) is already placed — you're done!")
             }
+            for r in 0..<n {
+                for c in 0..<n where solution.contains(GridPosition(row: r, col: c)) {
+                    if state[r * n + c] != 1 {
+                        return Hint(outcome: .place, position: GridPosition(row: r, col: c),
+                                    placesStar: true,
+                                    message: "No move is forced by pure logic from here — so here's a \(item) from the solution to get you going.")
+                    }
+                }
+            }
             return Hint(outcome: .stuck, position: nil, placesStar: false,
-                        message: "There's no certain move from here — this board may need a careful guess. Try Highlight mode to test an idea.")
+                        message: "There's no certain move from here.")
         }
 
         private struct Step { let cell: Int; let star: Bool; let reason: String }

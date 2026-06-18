@@ -34,7 +34,14 @@ nonisolated enum PuzzleGenerator {
         // chasing a layout that keeps spawning new alternates.
         let refinementCap = 60
 
-        for _ in 0..<90 {
+        // Only ~3% of random layouts are logically solvable (no guessing), but we
+        // RETURN ON THE FIRST one found — so the average cost is just the ~33 attempts
+        // it takes to hit one, independent of this cap. The cap only bounds the rare
+        // unlucky run, so a high value makes shipping a guess-required fallback
+        // essentially never happen (0.97^300 ≈ 0.01%) at no change to average speed.
+        // (As a final backstop, `HintEngine` reveals a correct cell, so "Hint" always
+        // has a move even on a fallback board.)
+        for _ in 0..<300 {
             guard let solution = randomSolution(size: size, stars: stars, rng: &rng) else {
                 continue
             }
