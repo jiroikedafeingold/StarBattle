@@ -49,7 +49,7 @@ struct HelpView: View {
                         "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")
                     tip("highlighter",
                         "Test an idea safely",
-                        "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap Realize to commit it.")
+                        "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap “Do it” to commit it.")
                 }
 
                 Section {

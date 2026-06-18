@@ -7,7 +7,7 @@ nonisolated struct GridPosition: Hashable, Codable {
 }
 
 /// What the player has placed in a cell.
-nonisolated enum CellMark: Equatable {
+nonisolated enum CellMark: Equatable, Codable {
     /// Nothing placed.
     case empty
     /// A cherry (the goal mark). Named `star` for historical reasons.
@@ -18,7 +18,7 @@ nonisolated enum CellMark: Equatable {
 
 /// A background "guess" colour painted in Highlight mode. It sits behind any mark
 /// and is only committed to real marks when the player taps "Realize".
-nonisolated enum CellHighlight: Equatable {
+nonisolated enum CellHighlight: Equatable, Codable {
     /// No highlight — the cell shows its normal region tint.
     case none
     /// White — the player is guessing this square WILL be a cherry.

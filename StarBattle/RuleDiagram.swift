@@ -139,3 +139,27 @@ struct RuleExamplesView: View {
         .padding()
         .background(Color.white)
 }
+
+// Web export: one image per "how to play" rule group.
+
+#Preview("web-rule1") {
+    HStack(alignment: .top, spacing: 36) {
+        RuleExample(title: "Two per line",
+                    board: RuleDiagrams.twoPerLine(cell: 42), ok: true)
+        RuleExample(title: "Two per region",
+                    board: RuleDiagrams.region(cell: 42))
+    }
+    .padding(36)
+    .background(Color.white)
+}
+
+#Preview("web-rule2") {
+    HStack(alignment: .top, spacing: 36) {
+        RuleExample(title: "Blocks neighbours",
+                    board: RuleDiagrams.neverTouch(cell: 42))
+        RuleExample(title: "Not even diagonally",
+                    board: RuleDiagrams.touchBad(cell: 42), ok: false)
+    }
+    .padding(36)
+    .background(Color.white)
+}

@@ -101,24 +101,48 @@ final class GameViewModel {
     /// feel unresponsive right after launch.
     private var prefetchTail: Task<Puzzle, Never>?
 
+    /// True inside SwiftUI previews — used to skip background work and persistence.
+    private let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+
     init() {
-        // Show a real, playable board immediately — no spinner on launch — while the
-        // generator warms up the prefetch queue in the background. The launch board
-        // is drawn from the saved pool when available, so it varies between launches.
-        let launch = store.launchPuzzle()
-        puzzle = launch
-        marks = Self.emptyMarks(size: launch.size)
-        highlights = Self.emptyHighlights(size: launch.size)
+        // Restore the game the player left off in, if one was saved. Otherwise show a
+        // real, playable board immediately (drawn from the saved pool so it varies)
+        // while the generator warms up in the background.
+        if !isPreview, let saved = GameStateStore.load() {
+            puzzle = saved.puzzle
+            marks = saved.marks
+            highlights = saved.highlights
+            autoDotCount = saved.autoDotCount
+            highlightAutoDotCount = saved.highlightAutoDotCount
+            elapsedSeconds = saved.elapsedSeconds
+            isHighlightMode = saved.isHighlightMode
+            isSolved = saved.isSolved
+        } else {
+            let launch = store.launchPuzzle()
+            puzzle = launch
+            marks = Self.emptyMarks(size: launch.size)
+            highlights = Self.emptyHighlights(size: launch.size)
+            if !isPreview { StatsStore.recordStarted() }
+        }
         isGenerating = false
 
         // Don't spin up background generation inside SwiftUI previews. Defer it a
         // beat so the first frame and the first taps stay smooth on launch.
-        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+        if !isPreview {
             Task { [weak self] in
                 try? await Task.sleep(for: .milliseconds(250))
                 self?.topUpPrefetch()
             }
         }
+    }
+
+    /// Saves the current game so it can be restored after the app is quit.
+    func saveGame() {
+        guard !isPreview else { return }
+        GameStateStore.save(SavedGame(
+            puzzle: puzzle, marks: marks, highlights: highlights,
+            autoDotCount: autoDotCount, highlightAutoDotCount: highlightAutoDotCount,
+            elapsedSeconds: elapsedSeconds, isHighlightMode: isHighlightMode, isSolved: isSolved))
     }
 
     // MARK: - Lifecycle
@@ -157,6 +181,8 @@ final class GameViewModel {
         isHighlightMode = false
         isGenerating = false
 
+        if !isPreview { StatsStore.recordStarted() }
+        saveGame()
         topUpPrefetch()
     }
 
@@ -593,7 +619,13 @@ final class GameViewModel {
     private func evaluateWin() {
         let wasSolved = isSolved
         isSolved = isValidSolution()
-        if isSolved && !wasSolved { playCelebrationHaptics() }
+        if isSolved && !wasSolved {
+            playCelebrationHaptics()
+            if !isPreview {
+                StatsStore.recordSolved(seconds: elapsedSeconds)
+                saveGame()
+            }
+        }
     }
 
     /// Fires a short, strong sequence of heavy impacts to accompany the win.

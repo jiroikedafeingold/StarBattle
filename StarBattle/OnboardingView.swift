@@ -43,7 +43,7 @@ struct OnboardingView: View {
                   body: "Tap a square to cycle it: empty → a dot (your “no \(piece.noun) here” note) → a \(piece.noun) → empty. Drag to lay a quick line of dots."),
             Slide(art: .symbol("lightbulb.fill"), tint: .green,
                   title: "Helpers when you need them",
-                  body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and Realize it, and Undo or Redo anytime.")
+                  body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and tap “Do it” to commit, and Undo or Redo anytime.")
         ]
     }
 

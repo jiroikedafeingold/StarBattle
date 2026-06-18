@@ -277,7 +277,7 @@ struct GameView: View {
             Button {
                 Task { await model.realizeGuesses() }
             } label: {
-                Label("Realize", systemImage: "wand.and.stars")
+                Label("Do it", systemImage: "wand.and.stars")
             }
             .buttonStyle(.borderedProminent)
             .tint(.purple)

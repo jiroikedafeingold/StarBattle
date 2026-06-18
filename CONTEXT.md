@@ -23,9 +23,14 @@ of a 10×10 grid, where no two cherries may touch — not even diagonally.
 
 ## File map (`StarBattle/StarBattle/`)
 - `StarBattleApp.swift` — `@main` app entry → `ContentView`.
-- `ContentView.swift` — root **`TabView`** (Play / Help / Settings), applies the
-  app-wide light/dark `.preferredColorScheme` from settings, and presents
-  `OnboardingView` as a `fullScreenCover` on first launch (`hasSeenOnboarding`).
+- `ContentView.swift` — root **`TabView`** (Play / Stats / Help / Settings), owns the
+  `GameViewModel`, applies the app-wide light/dark `.preferredColorScheme`, presents
+  `OnboardingView` on first launch, and on `scenePhase != .active` calls
+  `model.saveGame()` so the current game survives the app being quit.
+- `Persistence.swift` — `SavedGame` + `GameStateStore` (current game, restored on
+  launch) and `Stats` + `StatsStore` (games started/solved + times), both in `UserDefaults`.
+- `StatsView.swift` — the Stats tab: games solved/started, solve rate, best/average
+  time, and a reset.
 - `AppSettings.swift` — `@AppStorage` keys + the `PieceStyle` (cherry/star/queen/
   diamond/heart) and `AppearanceMode` (system/light/dark) enums.
 - `GameView.swift` — the Play screen: header (+ optional timer), board, the action
