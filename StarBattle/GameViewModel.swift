@@ -56,6 +56,15 @@ final class GameViewModel {
     /// Whether any cell currently carries a highlight.
     var hasHighlights: Bool { highlights.contains { row in row.contains { $0 != .none } } }
 
+    /// The cell of the very first guess in the current Mark-mode exploration. Used to
+    /// drop a fading "?" there if the player backs all the way out of their guesses.
+    private var firstGuessCell: GridPosition?
+    /// The cell currently showing the fading "?" reminder (or nil). The view fades it
+    /// out over ~15s; `ghostPulse` changes so the fade restarts on each new ghost.
+    private(set) var guessGhost: GridPosition?
+    private(set) var ghostPulse = 0
+    private var ghostToken = 0
+
     /// Mirrors `autoDotCount` for the highlight layer: how many "will be a star"
     /// guesses are auto-dotting each cell with a grey guess. Lets a white guess
     /// place grey guess-dots around itself, and remove only those when it's removed.
@@ -178,6 +187,8 @@ final class GameViewModel {
         redoStack.removeAll()
         clearCheck()
         dismissHint()
+        firstGuessCell = nil
+        guessGhost = nil
         isHighlightMode = false
         isGenerating = false
 
@@ -217,6 +228,8 @@ final class GameViewModel {
         autoDotCount.removeAll()
         highlightAutoDotCount.removeAll()
         clearCheck()
+        firstGuessCell = nil
+        guessGhost = nil
         isSolved = false
     }
 
@@ -244,6 +257,7 @@ final class GameViewModel {
             }
             lastActionPlacedStar = false
             tapPulse &+= 1
+            noteHighlightsCleared()
             return
         }
 
@@ -292,7 +306,39 @@ final class GameViewModel {
         dismissHint()
         lastActionPlacedStar = false
         tapPulse &+= 1
+        noteHighlightsCleared()
         evaluateWin()
+    }
+
+    /// If the player has just emptied every guess while in Mark mode, drop a fading
+    /// "?" on the cell where their guessing began.
+    private func noteHighlightsCleared() {
+        guard isHighlightMode, firstGuessCell != nil, !hasHighlights else { return }
+        triggerGuessGhost()
+    }
+
+    private func triggerGuessGhost() {
+        guard let cell = firstGuessCell else { return }
+        firstGuessCell = nil
+        guessGhost = cell
+        ghostPulse &+= 1
+        ghostToken &+= 1
+        let token = ghostToken
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(15))
+            if ghostToken == token { guessGhost = nil }
+        }
+    }
+
+    /// Clears every guess highlight (leaving real marks), and — like backing out of
+    /// them — drops the fading "?" on the first guessed cell.
+    func clearGuesses() {
+        guard isHighlightMode, hasHighlights, !isRealizing else { return }
+        pushHistory()
+        highlights = Self.emptyHighlights(size: puzzle.size)
+        highlightAutoDotCount.removeAll()
+        tapPulse &+= 1
+        noteHighlightsCleared()
     }
 
     private func currentSnapshot() -> Snapshot {
@@ -436,6 +482,7 @@ final class GameViewModel {
     private func placeGuess(at pos: GridPosition) {
         let old = highlights[pos.row][pos.col]
         guard old != selectedHighlight else { return }
+        if firstGuessCell == nil { firstGuessCell = pos }   // remember where guessing began
         if old == .guessStar { removeGuessAutoDots(around: pos) }
         highlightAutoDotCount[pos] = nil            // this cell is now explicitly set
         highlights[pos.row][pos.col] = selectedHighlight
@@ -562,6 +609,7 @@ final class GameViewModel {
     func toggleHighlightMode() {
         guard !isRealizing else { return }
         dismissHint()
+        firstGuessCell = nil          // each Mark session tracks its own first guess
         isHighlightMode.toggle()
     }
 
@@ -599,6 +647,7 @@ final class GameViewModel {
             try? await Task.sleep(for: .milliseconds(150))
         }
         highlightAutoDotCount.removeAll()
+        firstGuessCell = nil          // guesses committed — start a fresh session
         isRealizing = false
         evaluateWin()
     }

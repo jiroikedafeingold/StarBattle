@@ -18,6 +18,10 @@ struct BoardView: View {
     var pieceStyle: PieceStyle = .cherry
     /// The cell the current hint refers to; drawn with an attention ring.
     var hintCell: GridPosition? = nil
+    /// A cell to mark with a slowly-fading "?" (where the player's guessing began).
+    var ghostCell: GridPosition? = nil
+    /// Bumped when a new ghost appears, so its 15s fade restarts.
+    var ghostPulse: Int = 0
     let onTap: (Int, Int) -> Void
     let onDragBegin: () -> Void
     let onDragPaint: (GridPosition, GridPosition) -> Void
@@ -58,6 +62,14 @@ struct BoardView: View {
                     HintRing(cell: cell)
                         .position(x: cell * CGFloat(hintCell.col) + cell / 2,
                                   y: cell * CGFloat(hintCell.row) + cell / 2)
+                        .allowsHitTesting(false)
+                }
+
+                if let ghostCell {
+                    GhostMark(cell: cell)
+                        .id(ghostPulse)   // restart the fade for each new ghost
+                        .position(x: cell * CGFloat(ghostCell.col) + cell / 2,
+                                  y: cell * CGFloat(ghostCell.row) + cell / 2)
                         .allowsHitTesting(false)
                 }
             }
@@ -221,6 +233,24 @@ private struct HintRing: View {
             .opacity(pulse ? 1.0 : 0.65)
             .animation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true), value: pulse)
             .onAppear { pulse = true }
+    }
+}
+
+/// A slight highlight left on the square where the player's guessing began,
+/// fading out over 15 seconds.
+private struct GhostMark: View {
+    let cell: CGFloat
+    @State private var faded = false
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: cell * 0.12)
+            .strokeBorder(Color.purple, lineWidth: max(2, cell * 0.07))
+            .frame(width: cell, height: cell)
+            .opacity(faded ? 0 : 0.75)
+            .onAppear {
+                faded = false
+                withAnimation(.linear(duration: 15)) { faded = true }
+            }
     }
 }
 

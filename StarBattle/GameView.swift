@@ -19,41 +19,44 @@ struct GameView: View {
     private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
 
     var body: some View {
-        GeometryReader { geo in
-            // Reserve room for the chrome so the square board fits without scrolling.
-            // Mark mode swaps the two-row bar for a single button, plus the guess bar.
-            let chrome: CGFloat = model.isHighlightMode ? 210 : 228
-            let side = max(140, min(geo.size.width - 32, geo.size.height - chrome, 620))
+        VStack(spacing: 10) {
+            header
 
-            VStack(spacing: 14) {
-                Spacer(minLength: 0)
-
-                header
-
-                Spacer(minLength: 0)
-
-                board(side: side)
-
-                if model.isHighlightMode {
-                    highlightBar
-                        .frame(width: side)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+            // The board fills whatever space is left between the header and the
+            // controls (a GeometryReader is greedy), sized to fit and centred. Because
+            // the controls keep their natural height, they can never clip off-screen —
+            // this is what previously happened on iPad.
+            GeometryReader { geo in
+                // Reserve a constant amount for the Mark-mode guess bar so the board is
+                // the SAME size whether or not Mark mode is on (no resize on toggle).
+                let side = max(140, min(geo.size.width, geo.size.height - 104, 600))
+                VStack(spacing: 10) {
+                    Spacer(minLength: 0)
+                    board(side: side)
+                    if model.isHighlightMode {
+                        highlightBar
+                            .frame(width: side)
+                            .transition(.opacity)
+                    }
+                    Spacer(minLength: 0)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
 
-                Spacer(minLength: 0)
-
+            // Fixed-height controls area so the board region above never changes height
+            // when swapping the two-row bar for the single "Exit Mark Mode" button.
+            ZStack {
                 if model.isHighlightMode {
                     exitMarkButton
                 } else {
                     controls
                 }
-
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(height: 150)
         }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if model.isSolved {
                 celebration
@@ -141,6 +144,8 @@ struct GameView: View {
                 wrongStars: model.wrongStars,
                 pieceStyle: pieceStyle,
                 hintCell: model.hintFocus,
+                ghostCell: model.guessGhost,
+                ghostPulse: model.ghostPulse,
                 onTap: { row, col in model.tap(row: row, col: col) },
                 onDragBegin: { model.beginDrag() },
                 onDragPaint: { start, end in model.dragPaint(from: start, to: end) },
@@ -261,29 +266,38 @@ struct GameView: View {
     // MARK: - Highlight mode bar (under the board)
 
     private var highlightBar: some View {
-        HStack(spacing: 14) {
-            swatch(.guessStar, fill: .white)
-            swatch(.guessEmpty, fill: Color(white: 0.55))
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                swatch(.guessStar, fill: .white)
+                swatch(.guessEmpty, fill: Color(white: 0.55))
 
-            // Compact Undo/Redo, set a little apart from the guess swatches.
-            HStack(spacing: 8) {
+                Spacer(minLength: 6)
+
                 miniButton("arrow.uturn.backward", enabled: model.canUndo) { model.undo() }
                 miniButton("arrow.uturn.forward", enabled: model.canRedo) { model.redo() }
             }
-            .padding(.leading, 8)
 
-            Spacer()
+            HStack(spacing: 10) {
+                Button { model.clearGuesses() } label: {
+                    Label("Erase", systemImage: "eraser")
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.red)
+                .disabled(!model.hasHighlights || model.isRealizing)
 
-            Button {
-                Task { await model.realizeGuesses() }
-            } label: {
-                Label("Do it", systemImage: "wand.and.stars")
+                Button { Task { await model.realizeGuesses() } } label: {
+                    Label("Do it", systemImage: "wand.and.stars")
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.purple)
+                .disabled(!model.hasHighlights || model.isRealizing)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.purple)
-            .disabled(!model.hasHighlights || model.isRealizing)
         }
-        .padding(.horizontal, 4)
+        .padding(.horizontal, 2)
     }
 
     private func swatch(_ kind: CellHighlight, fill: Color) -> some View {
@@ -293,8 +307,8 @@ struct GameView: View {
         } label: {
             RoundedRectangle(cornerRadius: 8)
                 .fill(fill)
-                .frame(width: 46, height: 46)
-                .overlay(GuessGlyph(highlight: kind, pieceStyle: pieceStyle, cellSize: 46))
+                .frame(width: 40, height: 40)
+                .overlay(GuessGlyph(highlight: kind, pieceStyle: pieceStyle, cellSize: 40))
                 .overlay(
                     RoundedRectangle(cornerRadius: 8)
                         .strokeBorder(selected ? Color.purple : Color.secondary.opacity(0.5),
@@ -310,11 +324,11 @@ struct GameView: View {
                             action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 38, height: 38)
+                .font(.system(size: 15, weight: .semibold))
+                .frame(width: 34, height: 34)
                 .foregroundStyle(enabled ? Color.accentColor : .secondary)
                 .background(enabled ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.18),
-                            in: RoundedRectangle(cornerRadius: 9))
+                            in: RoundedRectangle(cornerRadius: 8))
         }
         .buttonStyle(.plain)
         .disabled(!enabled || model.isRealizing)
