@@ -249,7 +249,7 @@ private struct GhostMark: View {
             .opacity(faded ? 0 : 0.75)
             .onAppear {
                 faded = false
-                withAnimation(.linear(duration: 15)) { faded = true }
+                withAnimation(.linear(duration: 10)) { faded = true }
             }
     }
 }

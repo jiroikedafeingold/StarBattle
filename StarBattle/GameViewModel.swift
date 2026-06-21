@@ -49,8 +49,6 @@ final class GameViewModel {
     private(set) var highlights: [[CellHighlight]]
     /// Whether the board is in Highlight (guessing) mode.
     private(set) var isHighlightMode = false
-    /// The colour painted while in Highlight mode.
-    var selectedHighlight: CellHighlight = .guessStar
     /// True while "Realize" is animating guesses into real marks.
     private(set) var isRealizing = false
     /// Whether any cell currently carries a highlight.
@@ -245,17 +243,26 @@ final class GameViewModel {
     func tap(row: Int, col: Int) {
         guard !isGenerating, !isSolved, !isRealizing else { return }
 
-        // In Highlight mode a tap paints (or clears) the selected guess colour
-        // rather than cycling the cell's mark.
+        // In Highlight mode a tap cycles the *guess* layer exactly like the real
+        // board cycles marks: empty → guess-dot → guess-cherry → empty.
         if isHighlightMode {
             pushHistory()
             let pos = GridPosition(row: row, col: col)
-            if highlights[row][col] == selectedHighlight {
-                clearGuess(at: pos)            // tapping the same colour clears it
-            } else {
-                placeGuess(at: pos)            // otherwise paint the selected colour
+            switch highlights[row][col] {
+            case .none:
+                if firstGuessCell == nil { firstGuessCell = pos }
+                highlights[row][col] = .guessEmpty
+                lastActionPlacedStar = false
+            case .guessEmpty:
+                highlightAutoDotCount[pos] = nil      // this cell becomes a cherry guess
+                highlights[row][col] = .guessStar
+                addGuessAutoDots(around: pos)
+                lastActionPlacedStar = true
+            case .guessStar:
+                removeGuessAutoDots(around: pos)
+                highlights[row][col] = .none
+                lastActionPlacedStar = false
             }
-            lastActionPlacedStar = false
             tapPulse &+= 1
             noteHighlightsCleared()
             return
@@ -325,7 +332,7 @@ final class GameViewModel {
         ghostToken &+= 1
         let token = ghostToken
         Task { @MainActor in
-            try? await Task.sleep(for: .seconds(15))
+            try? await Task.sleep(for: .seconds(10))
             if ghostToken == token { guessGhost = nil }
         }
     }
@@ -362,7 +369,7 @@ final class GameViewModel {
     /// Board state captured when a drag begins, so each move recomputes the stroke
     /// from scratch (letting the line grow and shrink as the finger moves).
     private var dragBase: [[CellMark]]?
-    private var dragPaintedGuessCells: Set<GridPosition> = []
+    private var dragBaseHighlights: [[CellHighlight]]?
     private var dragLength = 0
 
     /// Starts a drag stroke: snapshots the board once for Undo and for recomputation.
@@ -371,29 +378,28 @@ final class GameViewModel {
         pushHistory()
         dragLength = 0
         if isHighlightMode {
-            dragPaintedGuessCells = []
+            dragBaseHighlights = highlights
         } else {
             clearCheck()
             dragBase = marks
         }
     }
 
-    /// Paints a straight line between `start` and `end` (which share a row or
-    /// column). In Highlight mode it paints the selected guess colour onto each
-    /// newly-crossed cell (applying guess auto-dots); otherwise it paints dots,
-    /// leaving existing stars untouched and rebuilding the stroke from the pre-drag
-    /// board each call so dragging back over the line erases it again.
+    /// Paints a straight line of dots between `start` and `end` (which share a row or
+    /// column), leaving stars untouched and rebuilding the stroke from the pre-drag
+    /// board each call so dragging back over the line erases it again. In Highlight
+    /// mode it paints guess-dots on the guess layer; otherwise real dots — the two
+    /// modes behave identically.
     func dragPaint(from start: GridPosition, to end: GridPosition) {
         let cells = Self.lineCells(from: start, to: end)
         if isHighlightMode {
-            for cell in cells where !dragPaintedGuessCells.contains(cell) {
-                // A drag must never erase a cherry guess or a placed cherry — only
-                // paint onto cells that don't already hold one.
-                if highlights[cell.row][cell.col] == .guessStar { continue }
-                if marks[cell.row][cell.col] == .star { continue }
-                placeGuess(at: cell)
-                dragPaintedGuessCells.insert(cell)
+            guard let base = dragBaseHighlights else { return }
+            var updated = base
+            for cell in cells where updated[cell.row][cell.col] != .guessStar {
+                if firstGuessCell == nil { firstGuessCell = cell }
+                updated[cell.row][cell.col] = .guessEmpty
             }
+            highlights = updated
         } else {
             guard let base = dragBase else { return }
             var updated = base
@@ -412,8 +418,9 @@ final class GameViewModel {
     /// Ends a drag stroke.
     func endDrag() {
         dragBase = nil
-        dragPaintedGuessCells = []
+        dragBaseHighlights = nil
         dragLength = 0
+        noteHighlightsCleared()
         evaluateWin()
     }
 
@@ -476,25 +483,6 @@ final class GameViewModel {
     }
 
     // MARK: - Guess painting (Highlight mode)
-
-    /// Paints the selected guess colour on `pos`. A white "will be a star" guess
-    /// also drops grey guess-dots around it (mirroring a real star's auto-dots).
-    private func placeGuess(at pos: GridPosition) {
-        let old = highlights[pos.row][pos.col]
-        guard old != selectedHighlight else { return }
-        if firstGuessCell == nil { firstGuessCell = pos }   // remember where guessing began
-        if old == .guessStar { removeGuessAutoDots(around: pos) }
-        highlightAutoDotCount[pos] = nil            // this cell is now explicitly set
-        highlights[pos.row][pos.col] = selectedHighlight
-        if selectedHighlight == .guessStar { addGuessAutoDots(around: pos) }
-    }
-
-    /// Clears the guess on `pos`, removing its auto guess-dots if it was a star.
-    private func clearGuess(at pos: GridPosition) {
-        if highlights[pos.row][pos.col] == .guessStar { removeGuessAutoDots(around: pos) }
-        highlights[pos.row][pos.col] = .none
-        highlightAutoDotCount[pos] = nil
-    }
 
     /// Grey-dots the neighbours of a white guess, ref-counted so hand-placed grey
     /// guesses survive and shared neighbours stay until the last white guess goes.
@@ -611,11 +599,6 @@ final class GameViewModel {
         dismissHint()
         firstGuessCell = nil          // each Mark session tracks its own first guess
         isHighlightMode.toggle()
-    }
-
-    /// Chooses the guess colour painted by taps/drags in Highlight mode.
-    func selectHighlight(_ highlight: CellHighlight) {
-        selectedHighlight = highlight
     }
 
     /// Commits the painted guesses to real marks, one at a time with a short delay

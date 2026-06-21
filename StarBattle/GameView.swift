@@ -8,6 +8,7 @@ struct GameView: View {
     @State private var showNewConfirm = false
     @State private var showClearConfirm = false
     @State private var showHintConfirm = false
+    @State private var showEraseConfirm = false
 
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
@@ -27,27 +28,16 @@ struct GameView: View {
             // the controls keep their natural height, they can never clip off-screen —
             // this is what previously happened on iPad.
             GeometryReader { geo in
-                // Reserve a constant amount for the Mark-mode guess bar so the board is
-                // the SAME size whether or not Mark mode is on (no resize on toggle).
-                let side = max(140, min(geo.size.width, geo.size.height - 104, 600))
-                VStack(spacing: 10) {
-                    Spacer(minLength: 0)
-                    board(side: side)
-                    if model.isHighlightMode {
-                        highlightBar
-                            .frame(width: side)
-                            .transition(.opacity)
-                    }
-                    Spacer(minLength: 0)
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                let side = max(140, min(geo.size.width, geo.size.height, 600))
+                board(side: side)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)   // centred
             }
 
             // Fixed-height controls area so the board region above never changes height
-            // when swapping the two-row bar for the single "Exit Mark Mode" button.
+            // between normal and Mark mode (keeping the board the same size).
             ZStack {
                 if model.isHighlightMode {
-                    exitMarkButton
+                    markControls
                 } else {
                     controls
                 }
@@ -84,6 +74,13 @@ struct GameView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This places the next logical move and explains why.")
+        }
+        .confirmationDialog("Erase all guesses?", isPresented: $showEraseConfirm,
+                            titleVisibility: .visible) {
+            Button("Erase", role: .destructive) { model.clearGuesses() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This clears every guess on the board.")
         }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
@@ -263,75 +260,27 @@ struct GameView: View {
         .disabled(model.isGenerating || model.isRealizing)
     }
 
-    // MARK: - Highlight mode bar (under the board)
+    // MARK: - Mark-mode controls
 
-    private var highlightBar: some View {
-        VStack(spacing: 8) {
+    /// Mark mode uses the same full-size buttons as the main screen: Undo / Redo /
+    /// Erase / Do it, with the Exit button below.
+    private var markControls: some View {
+        VStack(spacing: 10) {
             HStack(spacing: 10) {
-                swatch(.guessStar, fill: .white)
-                swatch(.guessEmpty, fill: Color(white: 0.55))
-
-                Spacer(minLength: 6)
-
-                miniButton("arrow.uturn.backward", enabled: model.canUndo) { model.undo() }
-                miniButton("arrow.uturn.forward", enabled: model.canRedo) { model.redo() }
-            }
-
-            HStack(spacing: 10) {
-                Button { model.clearGuesses() } label: {
-                    Label("Erase", systemImage: "eraser")
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
+                ToolButton(title: "Undo", systemImage: "arrow.uturn.backward",
+                           isEnabled: model.canUndo) { model.undo() }
+                ToolButton(title: "Redo", systemImage: "arrow.uturn.forward",
+                           isEnabled: model.canRedo) { model.redo() }
+                ToolButton(title: "Erase", systemImage: "eraser", tint: .red, style: .active,
+                           isEnabled: model.hasHighlights) { showEraseConfirm = true }
+                ToolButton(title: "Do it", systemImage: "wand.and.stars", tint: .purple,
+                           style: .active, isEnabled: model.hasHighlights) {
+                    Task { await model.realizeGuesses() }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.red)
-                .disabled(!model.hasHighlights || model.isRealizing)
-
-                Button { Task { await model.realizeGuesses() } } label: {
-                    Label("Do it", systemImage: "wand.and.stars")
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.purple)
-                .disabled(!model.hasHighlights || model.isRealizing)
             }
+            exitMarkButton
         }
-        .padding(.horizontal, 2)
-    }
-
-    private func swatch(_ kind: CellHighlight, fill: Color) -> some View {
-        let selected = model.selectedHighlight == kind
-        return Button {
-            model.selectHighlight(kind)
-        } label: {
-            RoundedRectangle(cornerRadius: 8)
-                .fill(fill)
-                .frame(width: 40, height: 40)
-                .overlay(GuessGlyph(highlight: kind, pieceStyle: pieceStyle, cellSize: 40))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(selected ? Color.purple : Color.secondary.opacity(0.5),
-                                      lineWidth: selected ? 3 : 1)
-                )
-        }
-        .buttonStyle(.plain)
-        .disabled(model.isRealizing)
-    }
-
-    /// A small icon-only button (smaller than the swatches) for Undo/Redo in Mark mode.
-    private func miniButton(_ systemImage: String, enabled: Bool,
-                            action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: 15, weight: .semibold))
-                .frame(width: 34, height: 34)
-                .foregroundStyle(enabled ? Color.accentColor : .secondary)
-                .background(enabled ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.18),
-                            in: RoundedRectangle(cornerRadius: 8))
-        }
-        .buttonStyle(.plain)
-        .disabled(!enabled || model.isRealizing)
+        .disabled(model.isGenerating || model.isRealizing)
     }
 
     // MARK: - Helpers
