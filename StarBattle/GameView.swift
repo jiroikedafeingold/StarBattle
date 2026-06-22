@@ -326,13 +326,38 @@ struct GameView: View {
     }
 }
 
-/// A subtle reddish wash behind the game, warmer at the top.
+/// A warm grey, lightly-textured backdrop behind the game.
 struct AppBackground: View {
     var body: some View {
-        LinearGradient(
-            colors: [Color.red.opacity(0.10), Color.red.opacity(0.02)],
-            startPoint: .top, endPoint: .bottom)
-        .background(Color(.systemBackground))
+        ZStack {
+            Color(.systemGray6)
+            // A warm tint over the neutral grey.
+            Color(red: 0.55, green: 0.44, blue: 0.36).opacity(0.07)
+            GrainTexture()
+        }
+    }
+}
+
+/// A faint dotted grain that gives the background a subtle paper-like texture.
+private struct GrainTexture: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let step: CGFloat = 7
+            var y: CGFloat = 0
+            var row = 0
+            while y < size.height {
+                var x: CGFloat = (row % 2 == 0) ? 0 : step / 2
+                while x < size.width {
+                    ctx.fill(
+                        Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
+                        with: .color(.black.opacity(0.05)))
+                    x += step
+                }
+                y += step
+                row += 1
+            }
+        }
+        .allowsHitTesting(false)
     }
 }
 
