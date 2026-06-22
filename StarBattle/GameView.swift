@@ -107,8 +107,10 @@ struct GameView: View {
         .sensoryFeedback(trigger: model.celebrationPulse) { _, _ in
             .impact(weight: .heavy, intensity: 1.0)
         }
+        // A clear tap every time Check is pressed; a clean board also gets a success
+        // chime. A wrong cherry adds the strong, longer buzz below.
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
-            model.lastCheckHadErrors ? .error : .success
+            model.lastCheckHadErrors ? .impact(weight: .medium, intensity: 0.9) : .success
         }
         // A strong, repeated buzz when Check reveals a wrong cherry.
         .sensoryFeedback(trigger: model.wrongPulse) { _, _ in
