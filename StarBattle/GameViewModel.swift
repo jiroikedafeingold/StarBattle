@@ -111,7 +111,22 @@ final class GameViewModel {
     /// True inside SwiftUI previews — used to skip background work and persistence.
     private let isPreview = ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
 
+    /// The difficulty new puzzles are generated at (persisted; defaults to Easy).
+    private(set) var difficulty: Difficulty
+
+    // Per-game "clean win" tracking: a win counts as clean only if the player used
+    // no hint and never placed a wrong cherry.
+    private var hintUsedThisGame = false
+    private var badPlacementThisGame = false
+    /// Set true when the player has earned enough clean wins to be offered a step up
+    /// in difficulty; the view shows a one-time prompt and clears it.
+    var promptDifficultyIncrease = false
+
     init() {
+        let storedDifficulty = UserDefaults.standard.string(forKey: SettingsKey.difficulty)
+            .flatMap(Difficulty.init(rawValue:)) ?? .easy
+        difficulty = storedDifficulty
+
         // Restore the game the player left off in, if one was saved. Otherwise show a
         // real, playable board immediately (drawn from the saved pool so it varies)
         // while the generator warms up in the background.
@@ -168,7 +183,7 @@ final class GameViewModel {
         if !prefetchQueue.isEmpty {
             fresh = await prefetchQueue.removeFirst().value
         } else {
-            fresh = await PuzzleGenerator.generate()
+            fresh = await PuzzleGenerator.generate(difficulty: difficulty)
         }
         let minimumShown = Duration.milliseconds(450)
         let elapsed = start.duration(to: ContinuousClock.now)
@@ -189,10 +204,29 @@ final class GameViewModel {
         guessGhost = nil
         isHighlightMode = false
         isGenerating = false
+        hintUsedThisGame = false
+        badPlacementThisGame = false
 
         if !isPreview { StatsStore.recordStarted() }
         saveGame()
         topUpPrefetch()
+    }
+
+    /// Dismisses the one-time "step up the difficulty" prompt so it never shows again.
+    func dismissDifficultyPrompt() {
+        promptDifficultyIncrease = false
+        UserDefaults.standard.set(true, forKey: SettingsKey.difficultyPromptShown)
+    }
+
+    /// Switches the difficulty of future puzzles, discards any prefetched (wrong
+    /// difficulty) boards, and starts a fresh game at the new level.
+    func setDifficulty(_ new: Difficulty) {
+        guard new != difficulty else { return }
+        difficulty = new
+        UserDefaults.standard.set(new.rawValue, forKey: SettingsKey.difficulty)
+        prefetchQueue.removeAll()
+        prefetchTail = nil
+        Task { await newGame() }
     }
 
     /// Keeps the background generation queue filled to `prefetchDepth`. The tasks
@@ -203,9 +237,10 @@ final class GameViewModel {
             // Chain each build onto the previous one so they run sequentially at low
             // priority rather than competing for the CPU all at once.
             let previous = prefetchTail
+            let level = difficulty
             let task = Task.detached(priority: .background) { () -> Puzzle in
                 _ = await previous?.value
-                return PuzzleGenerator.buildPuzzle()
+                return PuzzleGenerator.buildPuzzle(difficulty: level)
             }
             prefetchTail = task
             prefetchQueue.append(task)
@@ -271,6 +306,15 @@ final class GameViewModel {
         pushHistory()
         clearCheck()
         let pos = GridPosition(row: row, col: col)
+
+        // Out of Mark mode, tapping a left-over guess clears it first, so a real
+        // mark can replace it on the same tap.
+        if highlights[row][col] != .none {
+            if highlights[row][col] == .guessStar { removeGuessAutoDots(around: pos) }
+            highlights[row][col] = .none
+            highlightAutoDotCount[pos] = nil
+        }
+
         switch marks[row][col] {
         case .empty:
             marks[row][col] = .dot
@@ -279,6 +323,7 @@ final class GameViewModel {
             marks[row][col] = .star
             addAutoDots(around: pos)
             lastActionPlacedStar = true
+            if !puzzle.solution.contains(pos) { badPlacementThisGame = true }
         case .star:
             removeAutoDots(around: pos)
             marks[row][col] = .empty
@@ -531,7 +576,11 @@ final class GameViewModel {
         wrongStars = Set(wrong)
         lastCheckHadErrors = !wrong.isEmpty
         checkPulse &+= 1
-        if lastCheckHadErrors { playWrongHaptics() }
+        if lastCheckHadErrors {
+            playWrongHaptics()
+            badPlacementThisGame = true
+            if !isPreview { StatsStore.recordBadGuesses(wrong.count) }
+        }
     }
 
     /// A short, strong buzz of heavy impacts to signal a wrong placement.
@@ -557,6 +606,8 @@ final class GameViewModel {
     /// message says so.
     func hint(item: String = "cherry", items: String = "cherries") {
         guard canHint else { return }
+        hintUsedThisGame = true
+        if !isPreview { StatsStore.recordHint() }
         let result = HintEngine.nextHint(puzzle: puzzle, marks: marks, item: item, items: items)
 
         if result.outcome == .place, let pos = result.position {
@@ -619,6 +670,7 @@ final class GameViewModel {
                     marks[pos.row][pos.col] = .star
                     // Play it out for real: dot the neighbours where appropriate.
                     addAutoDots(around: pos)
+                    if !puzzle.solution.contains(pos) { badPlacementThisGame = true }
                 case .guessEmpty:
                     marks[pos.row][pos.col] = .dot
                 case .none:
@@ -655,8 +707,23 @@ final class GameViewModel {
             playCelebrationHaptics()
             if !isPreview {
                 StatsStore.recordSolved(seconds: elapsedSeconds)
+                recordCleanWinIfEarned()
                 saveGame()
             }
+        }
+    }
+
+    /// A win with no hint and no wrong cherry is a "clean win". After five of them,
+    /// offer to step the difficulty up — once.
+    private func recordCleanWinIfEarned() {
+        guard !hintUsedThisGame, !badPlacementThisGame else { return }
+        let defaults = UserDefaults.standard
+        let wins = defaults.integer(forKey: SettingsKey.cleanWins) + 1
+        defaults.set(wins, forKey: SettingsKey.cleanWins)
+
+        let alreadyPrompted = defaults.bool(forKey: SettingsKey.difficultyPromptShown)
+        if wins >= 5, !alreadyPrompted, difficulty.harder != nil {
+            promptDifficultyIncrease = true
         }
     }
 

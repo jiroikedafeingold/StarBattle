@@ -20,6 +20,11 @@ struct StatsView: View {
                     row("Average time", timeText(stats.average), "clock.fill", .purple)
                 }
 
+                Section("Helpers") {
+                    row("Hints used", "\(stats.hints)", "lightbulb.fill", .blue)
+                    row("Bad cherries caught", "\(stats.badGuesses)", "xmark.seal.fill", .red)
+                }
+
                 if stats.solved == 0 {
                     Section {
                         Text("Solve your first puzzle to start tracking stats.")
@@ -79,6 +84,7 @@ struct StatsView: View {
 }
 
 #Preview {
-    StatsStore.save(Stats(started: 14, solved: 11, times: [128, 95, 210, 84, 156, 142]))
+    StatsStore.save(Stats(started: 14, solved: 11, times: [128, 95, 210, 84, 156, 142],
+                          hints: 3, badGuesses: 5))
     return StatsView()
 }

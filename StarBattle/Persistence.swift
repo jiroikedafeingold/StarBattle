@@ -38,6 +38,10 @@ struct Stats: Codable {
     var solved = 0
     /// Completion times (seconds) of solved puzzles.
     var times: [Int] = []
+    /// Total hints used.
+    var hints = 0
+    /// Total times Check flagged a wrong cherry (a "bad guess" caught).
+    var badGuesses = 0
 
     var best: Int? { times.min() }
     var average: Int? {
@@ -72,6 +76,19 @@ enum StatsStore {
         var stats = load()
         stats.solved += 1
         stats.times.append(seconds)
+        save(stats)
+    }
+
+    static func recordHint() {
+        var stats = load()
+        stats.hints += 1
+        save(stats)
+    }
+
+    static func recordBadGuesses(_ count: Int) {
+        guard count > 0 else { return }
+        var stats = load()
+        stats.badGuesses += count
         save(stats)
     }
 

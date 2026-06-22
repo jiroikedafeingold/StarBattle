@@ -16,8 +16,10 @@ struct GameView: View {
 
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
+    @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
     private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    private var difficulty: Difficulty { Difficulty(rawValue: difficultyRaw) ?? .easy }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -47,6 +49,7 @@ struct GameView: View {
         .padding(.horizontal)
         .padding(.vertical, 10)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(AppBackground().ignoresSafeArea())
         .overlay {
             if model.isSolved {
                 celebration
@@ -82,6 +85,17 @@ struct GameView: View {
         } message: {
             Text("This clears every guess on the board.")
         }
+        .alert("Nice streak! 🍒", isPresented: difficultyPromptPresented) {
+            Button("Try \(difficulty.harder?.label ?? "Harder")") {
+                if let harder = difficulty.harder { difficultyRaw = harder.rawValue }
+                model.dismissDifficultyPrompt()
+            }
+            Button("Stay on \(difficulty.label)", role: .cancel) {
+                model.dismissDifficultyPrompt()
+            }
+        } message: {
+            Text("You've solved five puzzles with no hints or wrong cherries. Ready to step up to \(difficulty.harder?.label ?? "a harder level")?")
+        }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
                                        : .impact(weight: .light, intensity: 0.6)
@@ -115,9 +129,8 @@ struct GameView: View {
     // MARK: - Header
 
     private var header: some View {
-        VStack(spacing: 2) {
-            Text("Cherry Battle")
-                .font(.title.bold())
+        VStack(spacing: 4) {
+            GameTitle()
             Text("Place 2 \(pieceStyle.plural) in every row, column and region")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -125,8 +138,24 @@ struct GameView: View {
             if !hideTimer {
                 Label(timeString, systemImage: "clock")
                     .font(.headline.monospacedDigit())
-                    .padding(.top, 2)
+                    .padding(.top, 1)
             }
+            difficultyPicker
+                .padding(.top, 2)
+        }
+    }
+
+    private var difficultyPicker: some View {
+        Picker("Difficulty", selection: $difficultyRaw) {
+            ForEach(Difficulty.allCases) { level in
+                Text(level.label).tag(level.rawValue)
+            }
+        }
+        .pickerStyle(.segmented)
+        .frame(maxWidth: 320)
+        .disabled(model.isGenerating || model.isRealizing)
+        .onChange(of: difficultyRaw) { _, newValue in
+            model.setDifficulty(Difficulty(rawValue: newValue) ?? .easy)
         }
     }
 
@@ -285,10 +314,50 @@ struct GameView: View {
 
     // MARK: - Helpers
 
+    private var difficultyPromptPresented: Binding<Bool> {
+        Binding(get: { model.promptDifficultyIncrease },
+                set: { if !$0 { model.dismissDifficultyPrompt() } })
+    }
+
     private var timeString: String {
         let minutes = model.elapsedSeconds / 60
         let seconds = model.elapsedSeconds % 60
         return String(format: "%02d:%02d", minutes, seconds)
+    }
+}
+
+/// A subtle reddish wash behind the game, warmer at the top.
+struct AppBackground: View {
+    var body: some View {
+        LinearGradient(
+            colors: [Color.red.opacity(0.10), Color.red.opacity(0.02)],
+            startPoint: .top, endPoint: .bottom)
+        .background(Color(.systemBackground))
+    }
+}
+
+/// The refined game title: "Cherry Battle" in a glossy red gradient with a soft
+/// drop shadow and a small cherry accent.
+struct GameTitle: View {
+    var body: some View {
+        HStack(spacing: 8) {
+            titleText("Cherry")
+            PieceView(style: .cherry, isWrong: false, size: 30)
+                .shadow(color: .red.opacity(0.25), radius: 3, y: 1)
+            titleText("Battle")
+        }
+        .accessibilityElement()
+        .accessibilityLabel("Cherry Battle")
+    }
+
+    private func titleText(_ s: String) -> some View {
+        Text(s)
+            .font(.system(size: 32, weight: .heavy, design: .serif))
+            .foregroundStyle(
+                LinearGradient(colors: [Color(red: 0.95, green: 0.26, blue: 0.30),
+                                        Color(red: 0.74, green: 0.05, blue: 0.12)],
+                               startPoint: .top, endPoint: .bottom))
+            .shadow(color: .black.opacity(0.18), radius: 1, y: 1)
     }
 }
 

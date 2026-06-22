@@ -15,17 +15,28 @@ import Foundation
 nonisolated enum PuzzleGenerator {
 
     /// Async entry point so generation runs off the main actor.
-    static func generate(size: Int = 10, stars: Int = 2) async -> Puzzle {
+    static func generate(size: Int = 10, stars: Int = 2,
+                         difficulty: Difficulty = .easy) async -> Puzzle {
         await Task.detached(priority: .userInitiated) {
-            buildPuzzle(size: size, stars: stars)
+            buildPuzzle(size: size, stars: stars, difficulty: difficulty)
         }.value
+    }
+
+    /// Maps a logic-complexity score (contradiction-step count) to a difficulty band.
+    /// Thresholds chosen from the measured distribution of generated 10×10/2-star
+    /// boards (which ranges ~17–60).
+    static func band(forComplexity c: Int) -> Difficulty {
+        if c <= 30 { return .easy }
+        if c <= 45 { return .medium }
+        return .hard
     }
 
     // MARK: - Top level
 
-    static func buildPuzzle(size: Int = 10, stars: Int = 2) -> Puzzle {
+    static func buildPuzzle(size: Int = 10, stars: Int = 2,
+                            difficulty: Difficulty = .easy) -> Puzzle {
         var rng = SystemRandomNumberGenerator()
-        var fallback: Puzzle?         // any unique puzzle, even if it needs guessing
+        var fallback: Puzzle?         // any solvable puzzle, regardless of band
         var nonUniqueFallback: Puzzle?
 
         // A converging layout settles in a few dozen refinement steps, so we cap
@@ -34,14 +45,12 @@ nonisolated enum PuzzleGenerator {
         // chasing a layout that keeps spawning new alternates.
         let refinementCap = 60
 
-        // Only ~3% of random layouts are logically solvable (no guessing), but we
-        // RETURN ON THE FIRST one found — so the average cost is just the ~33 attempts
-        // it takes to hit one, independent of this cap. The cap only bounds the rare
-        // unlucky run, so a high value makes shipping a guess-required fallback
-        // essentially never happen (0.97^300 ≈ 0.01%) at no change to average speed.
-        // (As a final backstop, `HintEngine` reveals a correct cell, so "Hint" always
-        // has a move even on a fallback board.)
-        for _ in 0..<300 {
+        // We return on the first solvable board whose difficulty matches the target,
+        // so the average cost is just the attempts needed to hit one. The high cap
+        // only bounds the rare unlucky run; on a miss we fall back to any solvable
+        // board (closest difficulty we found). `HintEngine` reveals a correct cell as
+        // a final backstop, so "Hint" always has a move.
+        for _ in 0..<500 {
             guard let solution = randomSolution(size: size, stars: stars, rng: &rng) else {
                 continue
             }
@@ -78,11 +87,14 @@ nonisolated enum PuzzleGenerator {
                 nonUniqueFallback = puzzle
                 continue
             }
-            // Prefer a puzzle that can be solved by deduction (no guessing).
-            if logicallySolvable(regions: regions, size: size, stars: stars) {
-                return puzzle
+            // Accept only a logically-solvable board in the requested difficulty band;
+            // keep any solvable board as a fallback.
+            if let complexity = logicComplexity(regions: regions, size: size, stars: stars) {
+                if band(forComplexity: complexity) == difficulty {
+                    return puzzle
+                }
+                fallback = fallback ?? puzzle
             }
-            fallback = fallback ?? puzzle
         }
         return fallback ?? nonUniqueFallback
             ?? Puzzle.starters.randomElement() ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
@@ -521,6 +533,13 @@ nonisolated enum PuzzleGenerator {
         let board = LogicBoard(regions: regions, size: size, stars: stars)
         return board.solve()
     }
+
+    /// How hard the puzzle is to reason through: the number of single-cell
+    /// contradiction deductions needed (0 = solvable by basic elimination/fill alone).
+    /// Returns nil if it isn't logically solvable. Used to grade Easy/Medium/Hard.
+    static func logicComplexity(regions: [[Int]], size: Int, stars: Int) -> Int? {
+        LogicBoard(regions: regions, size: size, stars: stars).complexity()
+    }
 }
 
 /// Fast, incremental constraint engine for `logicallySolvable`. Cell state lives in
@@ -590,6 +609,31 @@ private nonisolated final class LogicBoard {
             if !progressed { return false }   // stuck → would require guessing
         }
         return true
+    }
+
+    /// Like `solve()`, but counts the single-cell contradiction deductions used
+    /// (0 = basic propagation alone solved it). Returns nil if not solvable.
+    func complexity() -> Int? {
+        propagate()
+        guard ok else { return nil }
+
+        var trials = 0
+        while starTotal < stars * size {
+            var progressed = false
+            for i in 0..<(size * size) where state[i] == 0 {
+                if trialContradicts(i, assume: 1) {
+                    setEliminated(i); propagate()
+                    if !ok { return nil }
+                    trials += 1; progressed = true
+                } else if trialContradicts(i, assume: 2) {
+                    setStar(i); propagate()
+                    if !ok { return nil }
+                    trials += 1; progressed = true
+                }
+            }
+            if !progressed { return nil }
+        }
+        return trials
     }
 
     /// Tentatively sets cell `i` to `value`, propagates, notes whether it breaks the

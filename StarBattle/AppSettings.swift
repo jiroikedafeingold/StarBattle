@@ -8,6 +8,29 @@ enum SettingsKey {
     static let appearance = "appearance"
     static let hideTimer = "hideTimer"
     static let hasSeenOnboarding = "hasSeenOnboarding"
+    static let difficulty = "difficulty"
+    static let cleanWins = "cleanWins"
+    static let difficultyPromptShown = "difficultyPromptShown"
+}
+
+/// Puzzle difficulty, graded by how much step-by-step logic a solve needs (the
+/// count of single-cell contradiction deductions). Bands are defined in
+/// `PuzzleGenerator.band(forComplexity:)`. `nonisolated` so the off-main generator
+/// can use it.
+nonisolated enum Difficulty: String, CaseIterable, Identifiable {
+    case easy, medium, hard
+
+    var id: String { rawValue }
+    var label: String { rawValue.capitalized }
+
+    /// The next harder level, if any (used by the "step up" prompt).
+    var harder: Difficulty? {
+        switch self {
+        case .easy: return .medium
+        case .medium: return .hard
+        case .hard: return nil
+        }
+    }
 }
 
 /// The glyph the player places on the board. The cherry is the default (and the

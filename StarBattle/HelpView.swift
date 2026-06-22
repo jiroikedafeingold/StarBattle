@@ -52,6 +52,20 @@ struct HelpView: View {
                         "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap “Do it” to commit it.")
                 }
 
+                Section("Using Mark mode") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        markParagraph("highlighter", .purple,
+                            "Mark mode is for trying out a path. Tap the **Mark** button and the board turns into a scratch pad: tap a square once for a guess-dot, again for a guess-\(piece.noun) — exactly like the real board, but nothing is committed yet.")
+                        markParagraph("arrow.triangle.branch", .blue,
+                            "Pick a square you’re unsure about and guess a \(piece.noun) there. Then follow the consequences — place the dots and \(piece.plural) that guess forces. If it all holds together, tap **Do it** to make the guesses real.")
+                        markParagraph("lightbulb.min", .orange,
+                            "If the path leads to a contradiction, then your first guess was wrong — so that square is actually a **dot**. Either way you’ve learned something, and often you can read off several more squares from there.")
+                        markParagraph("square.dashed", .pink,
+                            "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you should know whether it’s a \(piece.noun) or a dot, so mark it for real.")
+                    }
+                    .padding(.vertical, 2)
+                }
+
                 Section {
                     Button {
                         showTutorial = true
@@ -74,6 +88,18 @@ struct HelpView: View {
         }
         .sheet(isPresented: $showTutorial) {
             OnboardingView()
+        }
+    }
+
+    private func markParagraph(_ symbol: String, _ tint: Color, _ text: LocalizedStringKey) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(tint)
+                .frame(width: 28)
+            Text(text)
+                .font(.footnote)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
