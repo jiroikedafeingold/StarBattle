@@ -1,5 +1,17 @@
 # Cherry Battle — App Store metadata
 
+## What's New (1.2, ≤4000)
+Pick your challenge, track your progress, and play in your language.
+
+• Three difficulty levels — Easy, Medium and Hard, graded by how much step-by-step logic a solve really needs. Hard now demands genuinely deeper (but still 100% logical) reasoning.
+• Get rewarded — string together five clean solves and the game offers to step you up.
+• Per-level stats — games solved, solve rate, best & average times, hints used and bad cherries caught, tracked separately for each difficulty.
+• Smarter hints — they now reason through the harder boards too, and always explain why.
+• Simpler Mark mode — it works just like the real board (tap for a dot, tap again for a cherry), with full-size Undo/Redo/Erase/Do-it buttons and a new in-app guide.
+• Localized for 10 languages, a refined new title, and a fresh cherry-red look.
+
+Thanks for playing! 🍒
+
 ## What's New (1.0.6, ≤4000)
 Save & resume, a new Stats tab, and a clearer way to learn the rules.
 
