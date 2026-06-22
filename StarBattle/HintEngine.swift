@@ -190,7 +190,57 @@ enum HintEngine {
                                 reason: "A \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
                 }
             }
+            // 6. Deep (nested) contradiction → cherry: leaving it empty leads, after a
+            //    few more forced steps, to an impossible board. (Hard boards.)
+            for i in 0..<state.count where state[i] == 0 {
+                if contradictsDeep(setting: i, to: 2) {
+                    let pos = GridPosition(row: i / n, col: i % n)
+                    return Step(cell: i, star: true,
+                                reason: "This one needs a deeper look: marking row \(pos.row + 1), column \(pos.col + 1) empty forces a contradiction a few steps on — so it must be a \(item).")
+                }
+            }
+            // 7. Deep (nested) contradiction → empty.
+            for i in 0..<state.count where state[i] == 0 {
+                if contradictsDeep(setting: i, to: 1) {
+                    let pos = GridPosition(row: i / n, col: i % n)
+                    return Step(cell: i, star: false,
+                                reason: "This one needs a deeper look: a \(item) at row \(pos.row + 1), column \(pos.col + 1) forces a contradiction a few steps on — so it must be empty.")
+                }
+            }
             return nil
+        }
+
+        /// Depth-2 contradiction: assume `value`, propagate, then apply the single-cell
+        /// contradiction closure to the hypothetical; true if any of it breaks.
+        private func contradictsDeep(setting i: Int, to value: Int8) -> Bool {
+            var s = state
+            s[i] = value
+            if !propagate(&s) { return true }
+            return !resolveSingleCell(&s)
+        }
+
+        /// Applies every forced single-cell-contradiction deduction to `s`.
+        /// Returns false if the board becomes impossible.
+        private func resolveSingleCell(_ s: inout [Int8]) -> Bool {
+            while true {
+                var progressed = false
+                for j in 0..<s.count where s[j] == 0 {
+                    var t1 = s; t1[j] = 1
+                    if !propagate(&t1) {            // a cherry here is impossible
+                        s[j] = 2
+                        if !propagate(&s) { return false }
+                        progressed = true; continue
+                    }
+                    var t2 = s; t2[j] = 2
+                    if !propagate(&t2) {            // leaving it empty is impossible
+                        s[j] = 1
+                        if !propagate(&s) { return false }
+                        progressed = true; continue
+                    }
+                }
+                if !progressed { break }
+            }
+            return true
         }
 
         /// Cherries placed and the list of still-open cells in a unit.

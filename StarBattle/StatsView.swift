@@ -3,12 +3,22 @@ import SwiftUI
 /// The Stats tab: cumulative play history (games started/solved, solve rate, and
 /// best / average completion time). Reloads each time it appears.
 struct StatsView: View {
+    @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
+    @State private var selected = Difficulty.easy
     @State private var stats = Stats()
     @State private var showResetConfirm = false
 
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Picker("Difficulty", selection: $selected) {
+                        ForEach(Difficulty.allCases) { Text($0.label).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 8, bottom: 6, trailing: 8))
+                }
+
                 Section {
                     row("Games solved", "\(stats.solved)", "checkmark.seal.fill", .green)
                     row("Games started", "\(stats.started)", "play.circle.fill", .blue)
@@ -44,12 +54,16 @@ struct StatsView: View {
             }
             .navigationTitle("Stats")
         }
-        .onAppear { stats = StatsStore.load() }
+        .onAppear {
+            selected = Difficulty(rawValue: difficultyRaw) ?? .easy
+            stats = StatsStore.load(selected)
+        }
+        .onChange(of: selected) { _, new in stats = StatsStore.load(new) }
         .confirmationDialog("Reset all stats?", isPresented: $showResetConfirm,
                             titleVisibility: .visible) {
             Button("Reset", role: .destructive) {
                 StatsStore.reset()
-                stats = StatsStore.load()
+                stats = StatsStore.load(selected)
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -84,7 +98,10 @@ struct StatsView: View {
 }
 
 #Preview {
-    StatsStore.save(Stats(started: 14, solved: 11, times: [128, 95, 210, 84, 156, 142],
-                          hints: 3, badGuesses: 5))
+    var all = AllStats()
+    all[.easy] = Stats(started: 14, solved: 11, times: [128, 95, 210, 84, 156, 142],
+                       hints: 3, badGuesses: 5)
+    all[.medium] = Stats(started: 6, solved: 3, times: [240, 198, 312], hints: 4, badGuesses: 7)
+    StatsStore.saveAll(all)
     return StatsView()
 }

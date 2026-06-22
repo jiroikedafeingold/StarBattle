@@ -22,13 +22,18 @@ nonisolated enum PuzzleGenerator {
         }.value
     }
 
-    /// Maps a logic-complexity score (contradiction-step count) to a difficulty band.
-    /// Thresholds chosen from the measured distribution of generated 10×10/2-star
-    /// boards (which ranges ~17–60).
+    /// Band for a board solvable by single-cell contradiction, from its step count.
+    /// (Boards that need deeper, nested logic are graded `.hard` separately.)
     static func band(forComplexity c: Int) -> Difficulty {
-        if c <= 30 { return .easy }
-        if c <= 45 { return .medium }
-        return .hard
+        c <= 28 ? .easy : .medium
+    }
+
+    /// Whether the board needs nested (depth-2) contradiction logic — i.e. it is NOT
+    /// solvable by single-cell contradiction alone, but IS with depth-2. These are the
+    /// genuinely-hard, still-logical boards.
+    static func isHard(regions: [[Int]], size: Int, stars: Int) -> Bool {
+        if logicComplexity(regions: regions, size: size, stars: stars) != nil { return false }
+        return LogicBoard(regions: regions, size: size, stars: stars).solveDeep()
     }
 
     // MARK: - Top level
@@ -87,13 +92,20 @@ nonisolated enum PuzzleGenerator {
                 nonUniqueFallback = puzzle
                 continue
             }
-            // Accept only a logically-solvable board in the requested difficulty band;
-            // keep any solvable board as a fallback.
+            // Grade the board. Easy/Medium are single-cell-contradiction solvable
+            // (graded by step count); Hard needs nested depth-2 logic. Keep any
+            // logically-solvable board as a fallback.
             if let complexity = logicComplexity(regions: regions, size: size, stars: stars) {
-                if band(forComplexity: complexity) == difficulty {
+                if difficulty != .hard, band(forComplexity: complexity) == difficulty {
                     return puzzle
                 }
                 fallback = fallback ?? puzzle
+            } else if difficulty == .hard {
+                // Not single-cell solvable — only pay for the costly depth-2 check
+                // when we're actually looking for a Hard board.
+                if LogicBoard(regions: regions, size: size, stars: stars).solveDeep() {
+                    return puzzle
+                }
             }
         }
         return fallback ?? nonUniqueFallback
@@ -634,6 +646,64 @@ private nonisolated final class LogicBoard {
             if !progressed { return nil }
         }
         return trials
+    }
+
+    /// Whether the puzzle is solvable using nested (depth-2) contradiction reasoning:
+    /// assume a value, then apply ordinary single-cell contradiction logic to the
+    /// hypothetical; if that breaks, the assumption is impossible. Strictly more
+    /// powerful than `solve()` — used to grade and generate "Hard" boards.
+    func solveDeep() -> Bool {
+        propagate()
+        guard ok else { return false }
+        while starTotal < stars * size {
+            var progressed = false
+            for i in 0..<(size * size) where state[i] == 0 {
+                if deepTrial(i, assume: 1) {
+                    setEliminated(i); propagate()
+                    if !ok { return false }
+                    progressed = true
+                } else if deepTrial(i, assume: 2) {
+                    setStar(i); propagate()
+                    if !ok { return false }
+                    progressed = true
+                }
+            }
+            if !progressed { return false }
+        }
+        return true
+    }
+
+    /// Depth-2 trial: assume `value` at `i`, propagate, then run the full single-cell
+    /// contradiction closure on the hypothetical; the assumption is impossible if any
+    /// of that breaks. Rewinds all changes afterwards.
+    private func deepTrial(_ i: Int, assume value: Int8) -> Bool {
+        let mark = journal.count
+        if value == 1 { setStar(i) } else { setEliminated(i) }
+        propagate()
+        if ok { depthOneClosure() }
+        let bad = !ok
+        rewind(to: mark)
+        return bad
+    }
+
+    /// Applies every forced single-cell-contradiction deduction to the current
+    /// (hypothetical) state, used inside a depth-2 trial.
+    private func depthOneClosure() {
+        while ok {
+            var progressed = false
+            for i in 0..<(size * size) where state[i] == 0 {
+                if trialContradicts(i, assume: 1) {
+                    setEliminated(i); propagate()
+                    if !ok { return }
+                    progressed = true
+                } else if trialContradicts(i, assume: 2) {
+                    setStar(i); propagate()
+                    if !ok { return }
+                    progressed = true
+                }
+            }
+            if !progressed { break }
+        }
     }
 
     /// Tentatively sets cell `i` to `value`, propagates, notes whether it breaks the

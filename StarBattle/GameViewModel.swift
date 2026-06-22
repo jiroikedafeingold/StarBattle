@@ -144,7 +144,7 @@ final class GameViewModel {
             puzzle = launch
             marks = Self.emptyMarks(size: launch.size)
             highlights = Self.emptyHighlights(size: launch.size)
-            if !isPreview { StatsStore.recordStarted() }
+            if !isPreview { StatsStore.recordStarted(difficulty) }
         }
         isGenerating = false
 
@@ -207,7 +207,7 @@ final class GameViewModel {
         hintUsedThisGame = false
         badPlacementThisGame = false
 
-        if !isPreview { StatsStore.recordStarted() }
+        if !isPreview { StatsStore.recordStarted(difficulty) }
         saveGame()
         topUpPrefetch()
     }
@@ -579,7 +579,7 @@ final class GameViewModel {
         if lastCheckHadErrors {
             playWrongHaptics()
             badPlacementThisGame = true
-            if !isPreview { StatsStore.recordBadGuesses(wrong.count) }
+            if !isPreview { StatsStore.recordBadGuesses(difficulty, wrong.count) }
         }
     }
 
@@ -607,7 +607,7 @@ final class GameViewModel {
     func hint(item: String = "cherry", items: String = "cherries") {
         guard canHint else { return }
         hintUsedThisGame = true
-        if !isPreview { StatsStore.recordHint() }
+        if !isPreview { StatsStore.recordHint(difficulty) }
         let result = HintEngine.nextHint(puzzle: puzzle, marks: marks, item: item, items: items)
 
         if result.outcome == .place, let pos = result.position {
@@ -706,7 +706,7 @@ final class GameViewModel {
         if isSolved && !wasSolved {
             playCelebrationHaptics()
             if !isPreview {
-                StatsStore.recordSolved(seconds: elapsedSeconds)
+                StatsStore.recordSolved(difficulty, seconds: elapsedSeconds)
                 recordCleanWinIfEarned()
                 saveGame()
             }

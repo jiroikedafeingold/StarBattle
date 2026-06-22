@@ -50,49 +50,52 @@ struct Stats: Codable {
     }
 }
 
-/// Reads and updates the persisted `Stats`.
-enum StatsStore {
-    private static let key = "stats.v1"
+/// Per-difficulty statistics, keyed by `Difficulty.rawValue`.
+struct AllStats: Codable {
+    var buckets: [String: Stats] = [:]
 
-    static func load() -> Stats {
+    subscript(_ d: Difficulty) -> Stats {
+        get { buckets[d.rawValue] ?? Stats() }
+        set { buckets[d.rawValue] = newValue }
+    }
+}
+
+/// Reads and updates the persisted per-difficulty `Stats`.
+enum StatsStore {
+    private static let key = "stats.v2"
+
+    static func loadAll() -> AllStats {
         guard let data = UserDefaults.standard.data(forKey: key),
-              let stats = try? JSONDecoder().decode(Stats.self, from: data) else { return Stats() }
-        return stats
+              let all = try? JSONDecoder().decode(AllStats.self, from: data) else { return AllStats() }
+        return all
     }
 
-    static func save(_ stats: Stats) {
-        if let data = try? JSONEncoder().encode(stats) {
+    static func saveAll(_ all: AllStats) {
+        if let data = try? JSONEncoder().encode(all) {
             UserDefaults.standard.set(data, forKey: key)
         }
     }
 
-    static func recordStarted() {
-        var stats = load()
-        stats.started += 1
-        save(stats)
+    static func load(_ difficulty: Difficulty) -> Stats { loadAll()[difficulty] }
+
+    static func recordStarted(_ difficulty: Difficulty) {
+        var all = loadAll(); all[difficulty].started += 1; saveAll(all)
     }
 
-    static func recordSolved(seconds: Int) {
-        var stats = load()
-        stats.solved += 1
-        stats.times.append(seconds)
-        save(stats)
+    static func recordSolved(_ difficulty: Difficulty, seconds: Int) {
+        var all = loadAll(); all[difficulty].solved += 1; all[difficulty].times.append(seconds); saveAll(all)
     }
 
-    static func recordHint() {
-        var stats = load()
-        stats.hints += 1
-        save(stats)
+    static func recordHint(_ difficulty: Difficulty) {
+        var all = loadAll(); all[difficulty].hints += 1; saveAll(all)
     }
 
-    static func recordBadGuesses(_ count: Int) {
+    static func recordBadGuesses(_ difficulty: Difficulty, _ count: Int) {
         guard count > 0 else { return }
-        var stats = load()
-        stats.badGuesses += count
-        save(stats)
+        var all = loadAll(); all[difficulty].badGuesses += count; saveAll(all)
     }
 
     static func reset() {
-        save(Stats())
+        saveAll(AllStats())
     }
 }
