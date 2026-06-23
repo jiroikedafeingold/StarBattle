@@ -9,6 +9,7 @@ struct GameView: View {
     @State private var showClearConfirm = false
     @State private var showHintConfirm = false
     @State private var showEraseConfirm = false
+    @State private var celebrationHaptics = CelebrationHaptics()
 
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
@@ -103,9 +104,9 @@ struct GameView: View {
         .sensoryFeedback(trigger: model.isSolved) { wasSolved, isSolved in
             (isSolved && !wasSolved) ? .success : nil
         }
-        // A rolling burst of heavy impacts while the win celebration plays.
-        .sensoryFeedback(trigger: model.celebrationPulse) { _, _ in
-            .impact(weight: .heavy, intensity: 1.0)
+        // A long, swelling "confetti brushing past you" burst when the puzzle is solved.
+        .onChange(of: model.celebrationPulse) { _, _ in
+            celebrationHaptics.play()
         }
         // A clear tap every time Check is pressed; a clean board also gets a success
         // chime. A wrong cherry adds the strong, longer buzz below.

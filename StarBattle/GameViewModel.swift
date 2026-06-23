@@ -39,8 +39,8 @@ final class GameViewModel {
     /// Whether the most recent action placed a star (used to pick a stronger haptic).
     private(set) var lastActionPlacedStar = false
 
-    /// Bumped repeatedly when a puzzle is solved so the view can play a strong,
-    /// rolling burst of haptics during the celebration.
+    /// Bumped once when a puzzle is solved so the view can play the long, textured
+    /// "confetti brushing past you" celebration haptic (see `CelebrationHaptics`).
     private(set) var celebrationPulse = 0
 
     // MARK: Highlight (guessing) mode
@@ -727,14 +727,11 @@ final class GameViewModel {
         }
     }
 
-    /// Fires a short, strong sequence of heavy impacts to accompany the win.
+    /// Signals the view to play the long, textured celebration haptic. Bumping the
+    /// pulse once is enough — the view layer owns the Core Haptics pattern, which is a
+    /// ~3s swelling "confetti brushing past" sweep rather than a string of plain thuds.
     private func playCelebrationHaptics() {
-        Task { @MainActor in
-            for _ in 0..<9 {
-                celebrationPulse &+= 1
-                try? await Task.sleep(for: .milliseconds(110))
-            }
-        }
+        celebrationPulse &+= 1
     }
 
     /// True when the board satisfies every Star Battle rule.
