@@ -19,8 +19,17 @@ struct GameView: View {
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
+    @Environment(\.horizontalSizeClass) private var hSize
+    @Environment(\.verticalSizeClass) private var vSize
+
     private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
     private var difficulty: Difficulty { Difficulty(rawValue: difficultyRaw) ?? .easy }
+
+    /// True only on a full-screen iPad. iPhones are always compact in at least one
+    /// axis, and an iPad in a narrow multitasking slot goes compact too — in both of
+    /// those the tab bar sits at the bottom. When both axes are regular the tab bar
+    /// floats across the top, so the Play content needs room to clear it.
+    private var isPadLayout: Bool { hSize == .regular && vSize == .regular }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -49,6 +58,9 @@ struct GameView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
+        // Keep the header (title + difficulty options) clear of the iPad's floating
+        // top tab bar, which otherwise overlaps them.
+        .safeAreaPadding(.top, isPadLayout ? 44 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppBackground().ignoresSafeArea())
         .overlay {
