@@ -22,18 +22,26 @@ nonisolated enum PuzzleGenerator {
         }.value
     }
 
-    /// Band for a board solvable by single-cell contradiction, from its step count.
-    /// (Boards that need deeper, nested logic are graded `.hard` separately.)
-    static func band(forComplexity c: Int) -> Difficulty {
-        c <= 28 ? .easy : .medium
+    /// The fewest times a board must *force* the depth-2 (nested) technique before we
+    /// call it Hard. Below this it's a Medium with a few spicy moments; at zero it's
+    /// Easy. Calibrated empirically: random unique boards almost never solve by basic
+    /// logic alone, so difficulty is really about *how often* the hard technique is
+    /// unavoidable, and Hard boards force it many times (often 8–25).
+    static let hardMinTier2 = 6
+
+    /// Grades a board by *how often it forces the hard (depth-2) technique* — the peak
+    /// technique and its frequency, not the aggregate step count. This is what makes
+    /// "Hard" reliably hard: Easy never needs depth-2, Medium needs it occasionally,
+    /// and Hard needs it again and again.
+    static func band(forProfile p: DifficultyProfile) -> Difficulty {
+        if p.tier2Steps == 0 { return .easy }            // pure single-cell logic
+        if p.tier2Steps >= hardMinTier2 { return .hard } // forces depth-2 repeatedly
+        return .medium                                   // a few depth-2 moments
     }
 
-    /// Whether the board needs nested (depth-2) contradiction logic — i.e. it is NOT
-    /// solvable by single-cell contradiction alone, but IS with depth-2. These are the
-    /// genuinely-hard, still-logical boards.
-    static func isHard(regions: [[Int]], size: Int, stars: Int) -> Bool {
-        if logicComplexity(regions: regions, size: size, stars: stars) != nil { return false }
-        return LogicBoard(regions: regions, size: size, stars: stars).solveDeep()
+    /// Computes a board's solve profile, or nil if it isn't solvable within depth-2.
+    static func profile(regions: [[Int]], size: Int, stars: Int) -> DifficultyProfile? {
+        LogicBoard(regions: regions, size: size, stars: stars).difficultyProfile()
     }
 
     // MARK: - Top level
@@ -92,20 +100,21 @@ nonisolated enum PuzzleGenerator {
                 nonUniqueFallback = puzzle
                 continue
             }
-            // Grade the board. Easy/Medium are single-cell-contradiction solvable
-            // (graded by step count); Hard needs nested depth-2 logic. Keep any
-            // logically-solvable board as a fallback.
-            if let complexity = logicComplexity(regions: regions, size: size, stars: stars) {
-                if difficulty != .hard, band(forComplexity: complexity) == difficulty {
-                    return puzzle
-                }
+            // Grade as cheaply as the target allows. For Easy only a tier-1 solve
+            // matters, and it never pays the costly depth-2 grind — important because
+            // Easy boards are scarce, so we test many candidates. For Medium/Hard the
+            // depth-2 profile is unavoidable (it's what tells them apart), but it stays
+            // cheap on the Easy candidates it skips past (those solve at tier 1). Any
+            // unique board is a valid fallback, so keep the first one we see.
+            let board = LogicBoard(regions: regions, size: size, stars: stars)
+            if difficulty == .easy {
+                if board.tier1Solve() != nil { return puzzle }
                 fallback = fallback ?? puzzle
-            } else if difficulty == .hard {
-                // Not single-cell solvable — only pay for the costly depth-2 check
-                // when we're actually looking for a Hard board.
-                if LogicBoard(regions: regions, size: size, stars: stars).solveDeep() {
-                    return puzzle
-                }
+            } else if let profile = board.difficultyProfile() {
+                if band(forProfile: profile) == difficulty { return puzzle }
+                fallback = fallback ?? puzzle
+            } else {
+                fallback = fallback ?? puzzle            // deeper than depth-2, still playable
             }
         }
         return fallback ?? nonUniqueFallback
@@ -531,30 +540,18 @@ nonisolated enum PuzzleGenerator {
         return results
     }
 
-    // MARK: - Logical solvability
-
-    /// Whether the puzzle can be solved purely by deduction — no guessing — using
-    /// mid-range human techniques:
-    ///   • a star eliminates its eight neighbours,
-    ///   • a full unit (row/column/region) eliminates its remaining cells,
-    ///   • a unit with exactly as many open cells as stars-needed fills them,
-    ///   • single-step contradiction: if assuming a star (or a blank) in a cell
-    ///     makes some unit impossible, the opposite is forced.
-    /// No nested "what-if-within-a-what-if" search is used, so it stays mid-range.
-    static func logicallySolvable(regions: [[Int]], size: Int, stars: Int) -> Bool {
-        let board = LogicBoard(regions: regions, size: size, stars: stars)
-        return board.solve()
-    }
-
-    /// How hard the puzzle is to reason through: the number of single-cell
-    /// contradiction deductions needed (0 = solvable by basic elimination/fill alone).
-    /// Returns nil if it isn't logically solvable. Used to grade Easy/Medium/Hard.
-    static func logicComplexity(regions: [[Int]], size: Int, stars: Int) -> Int? {
-        LogicBoard(regions: regions, size: size, stars: stars).complexity()
-    }
 }
 
-/// Fast, incremental constraint engine for `logicallySolvable`. Cell state lives in
+/// A board's solve "shape": how many single-cell-contradiction steps it needs, and how
+/// many times it *forces* the harder depth-2 (nested) technique. The peak technique and
+/// its frequency — not the aggregate step count — are what make a board feel hard.
+nonisolated struct DifficultyProfile {
+    var tier1Steps = 0   // forced single-cell-contradiction deductions
+    var tier2Steps = 0   // times the board forced an escalation to depth-2
+    var peakTier = 0     // 0 = basic propagation, 1 = single-cell, 2 = depth-2
+}
+
+/// Fast, incremental constraint engine behind `difficultyProfile`. Cell state lives in
 /// a flat array; per-unit star/blank counts are kept up to date so propagation only
 /// touches the cells that change, and trial assumptions are undone via a journal
 /// rather than by copying the whole grid.
@@ -601,76 +598,98 @@ private nonisolated final class LogicBoard {
         self.state = [Int8](repeating: 0, count: size * size)
     }
 
-    func solve() -> Bool {
-        propagate()
-        guard ok else { return false }
-
-        while starTotal < stars * size {
-            var progressed = false
-            for i in 0..<(size * size) where state[i] == 0 {
-                if trialContradicts(i, assume: 1) {       // a star here is impossible
-                    setEliminated(i); propagate()
-                    if !ok { return false }
-                    progressed = true
-                } else if trialContradicts(i, assume: 2) { // leaving it blank is impossible
-                    setStar(i); propagate()
-                    if !ok { return false }
-                    progressed = true
-                }
-            }
-            if !progressed { return false }   // stuck → would require guessing
-        }
-        return true
-    }
-
-    /// Like `solve()`, but counts the single-cell contradiction deductions used
-    /// (0 = basic propagation alone solved it). Returns nil if not solvable.
-    func complexity() -> Int? {
+    /// Cheap, tier-1-only solve: applies single-cell-contradiction logic to a fixpoint
+    /// and returns the number of such steps used (0 = basic propagation alone solved
+    /// it), or nil if the board stalls — i.e. needs the harder depth-2 technique (or a
+    /// guess). Used as a fast pre-filter so Easy/Medium generation never pays the
+    /// depth-2 cost: a board that stalls here is, by definition, not tier-1-gradable.
+    func tier1Solve() -> Int? {
         propagate()
         guard ok else { return nil }
 
-        var trials = 0
+        var steps = 0
         while starTotal < stars * size {
             var progressed = false
             for i in 0..<(size * size) where state[i] == 0 {
                 if trialContradicts(i, assume: 1) {
                     setEliminated(i); propagate()
                     if !ok { return nil }
-                    trials += 1; progressed = true
+                    steps += 1; progressed = true
                 } else if trialContradicts(i, assume: 2) {
                     setStar(i); propagate()
                     if !ok { return nil }
-                    trials += 1; progressed = true
+                    steps += 1; progressed = true
                 }
             }
-            if !progressed { return nil }
+            if !progressed { return nil }   // stalls → needs depth-2 or a guess
         }
-        return trials
+        return steps
     }
 
-    /// Whether the puzzle is solvable using nested (depth-2) contradiction reasoning:
-    /// assume a value, then apply ordinary single-cell contradiction logic to the
-    /// hypothetical; if that breaks, the assumption is impossible. Strictly more
-    /// powerful than `solve()` — used to grade and generate "Hard" boards.
-    func solveDeep() -> Bool {
+    /// Solves the board the way a person would — always reaching for the cheapest
+    /// technique that makes progress, and only escalating to the harder depth-2
+    /// technique when nothing cheaper works, then dropping straight back down — and
+    /// records a profile of that solve. Returns nil if the board needs more than
+    /// depth-2 (i.e. a guess).
+    ///
+    /// The two tiers, cheapest first:
+    ///   • Tier 1 — single-cell contradiction (`trialContradicts`): assume a star/blank
+    ///     in one cell; if simple propagation breaks, the opposite is forced.
+    ///   • Tier 2 — depth-2 nested contradiction (`deepTrial`): assume a value, then run
+    ///     the *entire* tier-1 closure on the hypothetical; if that breaks, it's forced.
+    ///
+    /// `tier2Steps` — how many distinct times the board left no tier-1 move and forced
+    /// the hard technique — is the signal that separates a genuinely hard board from one
+    /// with a single tricky spot.
+    func difficultyProfile() -> DifficultyProfile? {
         propagate()
-        guard ok else { return false }
+        guard ok else { return nil }
+
+        var profile = DifficultyProfile()
         while starTotal < stars * size {
-            var progressed = false
+            // Tier 1: apply every single-cell contradiction deduction available.
+            var tier1Found = 0
+            for i in 0..<(size * size) where state[i] == 0 {
+                if trialContradicts(i, assume: 1) {        // a star here is impossible
+                    setEliminated(i); propagate()
+                    if !ok { return nil }
+                    tier1Found += 1
+                } else if trialContradicts(i, assume: 2) { // leaving it blank is impossible
+                    setStar(i); propagate()
+                    if !ok { return nil }
+                    tier1Found += 1
+                }
+            }
+            if tier1Found > 0 {
+                profile.tier1Steps += tier1Found
+                profile.peakTier = max(profile.peakTier, 1)
+                continue
+            }
+
+            // No tier-1 move: escalate to a single depth-2 deduction, then loop back to
+            // the cheap tier (a hard breakthrough usually reopens easy moves).
+            var madeTier2 = false
             for i in 0..<(size * size) where state[i] == 0 {
                 if deepTrial(i, assume: 1) {
                     setEliminated(i); propagate()
-                    if !ok { return false }
-                    progressed = true
+                    if !ok { return nil }
+                    madeTier2 = true
                 } else if deepTrial(i, assume: 2) {
                     setStar(i); propagate()
-                    if !ok { return false }
-                    progressed = true
+                    if !ok { return nil }
+                    madeTier2 = true
                 }
+                if madeTier2 { break }
             }
-            if !progressed { return false }
+            if madeTier2 {
+                profile.tier2Steps += 1
+                profile.peakTier = 2
+                continue
+            }
+
+            return nil   // stuck even with depth-2 → would require a guess
         }
-        return true
+        return profile
     }
 
     /// Depth-2 trial: assume `value` at `i`, propagate, then run the full single-cell

@@ -83,9 +83,11 @@ of a 10×10 grid, where no two cherries may touch — not even diagonally.
   `CellHighlight` (`.none/.guessStar/.guessEmpty`), `Puzzle`.
 - `PuzzleGenerator.swift` — generates puzzles. `generate()` runs on a detached
   task. `buildPuzzle()` creates a random solution, grows regions, kills alternate
-  solutions to guarantee uniqueness, and **prefers logically-solvable (no-guessing)
-  puzzles** via an incremental deduction solver (`logicallySolvable`), falling back
-  to a guaranteed-unique puzzle if none is found in the attempt budget.
+  solutions to guarantee uniqueness, then **grades each board to the requested
+  difficulty** with an incremental deduction solver. `LogicBoard.difficultyProfile()`
+  grades by how often a board forces the hard depth-2 technique (`tier2Steps`): 0 =
+  Easy, 1–5 = Medium, ≥6 = Hard (`band(forProfile:)`). Falls back to any unique
+  puzzle if no exact-band board is found in the attempt budget.
 - `PuzzleStore.swift` — on-disk pool of generated puzzles for launch-screen variety.
 - `StarterPuzzles.swift` — bundled starter puzzles (`Puzzle.starters`) for instant
   first launch (and used by the Icon preview).

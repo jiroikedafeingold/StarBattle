@@ -13,9 +13,9 @@ enum SettingsKey {
     static let difficultyPromptShown = "difficultyPromptShown"
 }
 
-/// Puzzle difficulty, graded by how much step-by-step logic a solve needs (the
-/// count of single-cell contradiction deductions). Bands are defined in
-/// `PuzzleGenerator.band(forComplexity:)`. `nonisolated` so the off-main generator
+/// Puzzle difficulty, graded by the *peak* technique a solve forces and how often —
+/// not the aggregate step count. Bands are defined in
+/// `PuzzleGenerator.band(forProfile:)`. `nonisolated` so the off-main generator
 /// can use it.
 nonisolated enum Difficulty: String, CaseIterable, Identifiable {
     case easy, medium, hard
