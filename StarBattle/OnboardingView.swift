@@ -24,8 +24,8 @@ struct OnboardingView: View {
         let id = UUID()
         var art: Art
         let tint: Color
-        let title: String
-        let body: String
+        let title: LocalizedStringKey
+        let body: LocalizedStringKey
     }
 
     private var slides: [Slide] {

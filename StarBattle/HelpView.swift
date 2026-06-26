@@ -102,7 +102,7 @@ struct HelpView: View {
         }
     }
 
-    private func rule(_ emoji: String, _ text: String) -> some View {
+    private func rule(_ emoji: String, _ text: LocalizedStringKey) -> some View {
         Label {
             Text(text)
         } icon: {
@@ -112,7 +112,7 @@ struct HelpView: View {
 
     /// A rule with one or more example diagrams shown directly beneath it.
     @ViewBuilder
-    private func ruleRow<Diagrams: View>(_ symbol: String, _ text: String,
+    private func ruleRow<Diagrams: View>(_ symbol: String, _ text: LocalizedStringKey,
                                          @ViewBuilder diagrams: () -> Diagrams) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             rule(symbol, text)
@@ -125,7 +125,7 @@ struct HelpView: View {
     }
 
     /// A compact labelled diagram with an optional ✓/✗ badge, for use under a rule.
-    private func inlineDiagram(_ board: MiniBoard, ok: Bool? = nil, label: String) -> some View {
+    private func inlineDiagram(_ board: MiniBoard, ok: Bool? = nil, label: LocalizedStringKey) -> some View {
         VStack(spacing: 6) {
             board
                 .overlay(alignment: .topTrailing) {
@@ -144,7 +144,7 @@ struct HelpView: View {
         }
     }
 
-    private func tip(_ emoji: String, _ title: String, _ body: String) -> some View {
+    private func tip(_ emoji: String, _ title: LocalizedStringKey, _ body: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 12) {
             Text(emoji)
                 .font(.title2)

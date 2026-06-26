@@ -7,9 +7,12 @@ import SwiftUI
 struct GeneratingView: View {
     let stage: GenerationStage?
 
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+
     var body: some View {
         VStack(spacing: 16) {
-            CherryBuildAnimation()
+            PieceBuildAnimation(piece: piece)
                 .frame(width: 132, height: 132)
 
             VStack(spacing: 4) {
@@ -40,10 +43,12 @@ struct GeneratingView: View {
     }
 }
 
-/// A 5×5 grid of cherries that wash in along a diagonal wave, then fade and repeat —
-/// an at-a-glance echo of a board being filled in. Driven by elapsed time through a
-/// `TimelineView` so it animates smoothly regardless of what the rest of the UI is doing.
-private struct CherryBuildAnimation: View {
+/// A 5×5 grid of the player's chosen piece that washes in along a diagonal wave, then
+/// fades and repeats — an at-a-glance echo of a board being filled in. Driven by elapsed
+/// time through a `TimelineView` so it animates smoothly regardless of what the rest of
+/// the UI is doing.
+private struct PieceBuildAnimation: View {
+    let piece: PieceStyle
     private let dimension = 5
     private let period = 2.6   // seconds for one fill-and-fade loop
 
@@ -57,8 +62,7 @@ private struct CherryBuildAnimation: View {
                     ForEach(0..<(dimension * dimension), id: \.self) { i in
                         let row = i / dimension, col = i % dimension
                         let amount = fill(row: row, col: col, progress: p)
-                        Text("🍒")
-                            .font(.system(size: cell * 0.62))
+                        PieceView(style: piece, isWrong: false, size: cell * 0.74)
                             .frame(width: cell, height: cell)
                             .scaleEffect(0.35 + 0.65 * amount)
                             .opacity(amount)
