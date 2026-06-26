@@ -8,16 +8,19 @@ import SwiftUI
 /// Not used at runtime; it exists purely so the icon can be re-rendered from code, like
 /// the rest of the board art.
 struct AppIconArt: View {
-    /// A 4×4 crop. Region 0 (the focus) is a seven-cell blob in cherry red; the three
-    /// corners are smaller accent regions, so it reads as a slice of a larger board.
+    /// A 5×5 crop. Region 0 (the focus) is a seven-cell blob in cherry red, centred in
+    /// the icon; the surrounding cells are accent regions, so it reads as a slice of a
+    /// larger board. The extra ring of cells keeps the cherries clear of the edges.
     private let regions = [
-        [0, 0, 1, 1],
-        [0, 0, 0, 1],
-        [3, 0, 0, 2],
-        [3, 3, 2, 2]
+        [1, 1, 1, 1, 1],
+        [3, 0, 0, 1, 1],
+        [3, 0, 0, 0, 2],
+        [3, 3, 0, 0, 2],
+        [3, 3, 2, 2, 2]
     ]
-    /// The two cherries of region 0 — diagonally apart, so they don't touch.
-    private let cherries = [GridPosition(row: 0, col: 0), GridPosition(row: 2, col: 2)]
+    /// The two cherries of region 0 — diagonally apart (so they don't touch) and inset
+    /// from every edge.
+    private let cherries = [GridPosition(row: 1, col: 1), GridPosition(row: 3, col: 3)]
 
     private var cols: Int { regions[0].count }
     private var rows: Int { regions.count }
@@ -61,13 +64,14 @@ struct AppIconArt: View {
         .aspectRatio(1, contentMode: .fit)
     }
 
-    /// Soft, slightly richer-than-the-board tints so the icon stays vivid when small.
+    /// Soft, muted tints close to the in-game board, so the icon reads as a real board
+    /// crop rather than a loud graphic.
     private static func tint(_ id: Int) -> Color {
         switch id {
-        case 0:  return Color(red: 0.98, green: 0.58, blue: 0.58)   // cherry red (focus)
-        case 1:  return Color(red: 0.99, green: 0.84, blue: 0.52)   // amber
-        case 2:  return Color(red: 0.69, green: 0.88, blue: 0.66)   // green
-        default: return Color(red: 0.66, green: 0.78, blue: 0.97)   // indigo
+        case 0:  return Color(red: 0.97, green: 0.78, blue: 0.78)   // cherry red (focus)
+        case 1:  return Color(red: 0.99, green: 0.92, blue: 0.77)   // amber
+        case 2:  return Color(red: 0.83, green: 0.93, blue: 0.79)   // green
+        default: return Color(red: 0.80, green: 0.88, blue: 0.97)   // blue
         }
     }
 }
