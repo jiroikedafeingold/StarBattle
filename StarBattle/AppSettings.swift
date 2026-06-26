@@ -48,10 +48,11 @@ nonisolated enum Difficulty: String, CaseIterable, Identifiable {
 }
 
 /// The glyph the player places on the board. The cherry is the default (and the
-/// app icon); the rest are simple tintable alternatives.
+/// app icon); the rest are bright emoji alternatives — a few classics plus some
+/// deliberately quirky picks for fun.
 enum PieceStyle: String, CaseIterable, Identifiable {
-    case cherry, star, heart, diamond, queen
-    case dog, cat, bunny, turtle, bird, fish, ladybug
+    case cherry, star, queen, dog, cat, bunny
+    case poop, alien, ghost, robot, unicorn, dino
 
     var id: String { rawValue }
 
@@ -65,15 +66,15 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         case .cherry:  return "cherry"
         case .star:    return "star"
         case .queen:   return "queen"
-        case .diamond: return "diamond"
-        case .heart:   return "heart"
         case .dog:     return "dog"
         case .cat:     return "cat"
         case .bunny:   return "bunny"
-        case .turtle:  return "turtle"
-        case .bird:    return "bird"
-        case .fish:    return "fish"
-        case .ladybug: return "ladybug"
+        case .poop:    return "poop"
+        case .alien:   return "alien"
+        case .ghost:   return "ghost"
+        case .robot:   return "robot"
+        case .unicorn: return "unicorn"
+        case .dino:    return "dino"
         }
     }
 
@@ -83,15 +84,15 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         case .cherry:  return "cherries"
         case .star:    return "stars"
         case .queen:   return "queens"
-        case .diamond: return "diamonds"
-        case .heart:   return "hearts"
         case .dog:     return "dogs"
         case .cat:     return "cats"
         case .bunny:   return "bunnies"
-        case .turtle:  return "turtles"
-        case .bird:    return "birds"
-        case .fish:    return "fish"
-        case .ladybug: return "ladybugs"
+        case .poop:    return "poops"
+        case .alien:   return "aliens"
+        case .ghost:   return "ghosts"
+        case .robot:   return "robots"
+        case .unicorn: return "unicorns"
+        case .dino:    return "dinos"
         }
     }
 
@@ -108,15 +109,15 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         case .cherry:  return "🍒"   // unused — cherry uses CherryView
         case .star:    return "⭐️"
         case .queen:   return "👑"
-        case .diamond: return "💎"
-        case .heart:   return "❤️"
         case .dog:     return "🐶"
         case .cat:     return "🐱"
         case .bunny:   return "🐰"
-        case .turtle:  return "🐢"
-        case .bird:    return "🐦"
-        case .fish:    return "🐠"
-        case .ladybug: return "🐞"
+        case .poop:    return "💩"
+        case .alien:   return "👽"
+        case .ghost:   return "👻"
+        case .robot:   return "🤖"
+        case .unicorn: return "🦄"
+        case .dino:    return "🦖"
         }
     }
 
@@ -128,15 +129,15 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         case .cherry:  return Color(red: 0.86, green: 0.12, blue: 0.18)
         case .star:    return Color(red: 0.98, green: 0.74, blue: 0.10)
         case .queen:   return Color(red: 0.62, green: 0.22, blue: 0.78)
-        case .diamond: return Color(red: 0.90, green: 0.16, blue: 0.30)
-        case .heart:   return Color(red: 0.90, green: 0.16, blue: 0.30)
         case .dog:     return Color(red: 0.60, green: 0.41, blue: 0.22)
         case .cat:     return Color(red: 0.96, green: 0.52, blue: 0.12)
         case .bunny:   return Color(red: 0.91, green: 0.45, blue: 0.62)
-        case .turtle:  return Color(red: 0.20, green: 0.62, blue: 0.34)
-        case .bird:    return Color(red: 0.20, green: 0.55, blue: 0.90)
-        case .fish:    return Color(red: 0.10, green: 0.62, blue: 0.66)
-        case .ladybug: return Color(red: 0.85, green: 0.13, blue: 0.16)
+        case .poop:    return Color(red: 0.55, green: 0.36, blue: 0.20)   // brown
+        case .alien:   return Color(red: 0.42, green: 0.78, blue: 0.52)   // little green
+        case .ghost:   return Color(red: 0.82, green: 0.82, blue: 0.92)   // pale spectral
+        case .robot:   return Color(red: 0.55, green: 0.60, blue: 0.66)   // steel
+        case .unicorn: return Color(red: 0.93, green: 0.55, blue: 0.80)   // magic pink
+        case .dino:    return Color(red: 0.33, green: 0.62, blue: 0.30)   // green
         }
     }
 

@@ -14,9 +14,10 @@ struct OnboardingView: View {
     /// What a slide shows above its text.
     private enum Art {
         case piece
-        case symbol(String)
+        case emoji(String)
         case neverTouch
         case twoPerLine
+        case pieceShowcase
     }
 
     private struct Slide: Identifiable {
@@ -38,12 +39,15 @@ struct OnboardingView: View {
             Slide(art: .neverTouch, tint: .pink,
                   title: "Never touching",
                   body: "Two \(piece.plural) can never touch — not horizontally, vertically, or even diagonally. Each one rules out all eight neighbours."),
-            Slide(art: .symbol("hand.tap.fill"), tint: .purple,
+            Slide(art: .emoji("👆"), tint: .purple,
                   title: "Mark as you go",
                   body: "Tap a square to cycle it: empty → a dot (your “no \(piece.noun) here” note) → a \(piece.noun) → empty. Drag to lay a quick line of dots."),
-            Slide(art: .symbol("lightbulb.fill"), tint: .green,
+            Slide(art: .emoji("💡"), tint: .green,
                   title: "Helpers when you need them",
-                  body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and tap “Do it” to commit, and Undo or Redo anytime.")
+                  body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and tap “Do it” to commit, and Undo or Redo anytime."),
+            Slide(art: .pieceShowcase, tint: .pink,
+                  title: "Make it your own",
+                  body: "Don’t like \(piece.plural)? Head to Settings and swap the board piece for something fun — a unicorn 🦄, a robot 🤖, even a 💩. Pick whatever makes you smile.")
         ]
     }
 
@@ -97,14 +101,19 @@ struct OnboardingView: View {
         switch slide.art {
         case .piece:
             PieceView(style: piece, isWrong: false, size: 110)
-        case .symbol(let name):
-            Image(systemName: name)
-                .font(.system(size: 84, weight: .semibold))
-                .foregroundStyle(slide.tint)
+        case .emoji(let glyph):
+            Text(glyph)
+                .font(.system(size: 96))
         case .neverTouch:
             RuleDiagrams.neverTouch(piece: piece, cell: 46)
         case .twoPerLine:
             RuleDiagrams.twoPerLine(piece: piece, cell: 46)
+        case .pieceShowcase:
+            HStack(spacing: 16) {
+                ForEach([PieceStyle.unicorn, .robot, .poop, .alien], id: \.self) { style in
+                    PieceView(style: style, isWrong: false, size: 56)
+                }
+            }
         }
     }
 

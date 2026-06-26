@@ -12,55 +12,55 @@ struct HelpView: View {
         NavigationStack {
             List {
                 Section("How to play") {
-                    ruleRow("2.square.fill",
+                    ruleRow("2️⃣",
                             "Every row, column and coloured region holds exactly two \(piece.plural).") {
                         inlineDiagram(RuleDiagrams.twoPerLine(piece: piece, cell: 26),
                                       ok: true, label: "Two per line")
                         inlineDiagram(RuleDiagrams.region(piece: piece, cell: 26),
                                       label: "Two per region")
                     }
-                    ruleRow("hand.raised.slash.fill",
+                    ruleRow("🚫",
                             "Two \(piece.plural) may never touch — not even diagonally.") {
                         inlineDiagram(RuleDiagrams.neverTouch(piece: piece, cell: 26),
                                       label: "Blocks neighbours")
                         inlineDiagram(RuleDiagrams.touchBad(piece: piece, cell: 26),
                                       ok: false, label: "Not even diagonally")
                     }
-                    rule("hand.tap.fill",
+                    rule("👆",
                          "Tap a square to cycle it: empty → a dot → a \(piece.noun) → empty.")
-                    rule("hand.draw.fill",
+                    rule("✏️",
                          "Drag across a row or column to lay a line of dots quickly.")
-                    rule("trophy.fill",
+                    rule("🏆",
                          "Solve it when all \(piece.plural) are placed legally — the board celebrates!")
                 }
 
                 Section("Tips & tactics") {
-                    tip("square.dashed",
+                    tip("📝",
                         "Mark, don't guess",
                         "Put a dot in every square you’ve ruled out. Placing a \(piece.noun) dots its eight neighbours for you automatically.")
-                    tip("arrow.down.right.and.arrow.up.left",
+                    tip("🎯",
                         "Start where it’s tight",
                         "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are a great first move.")
-                    tip("equal.square",
+                    tip("🔢",
                         "Count the gaps",
                         "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). If a line already has its two, every other square is empty.")
-                    tip("lightbulb.fill",
+                    tip("💡",
                         "Ask for a hint",
                         "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")
-                    tip("highlighter",
+                    tip("🧪",
                         "Test an idea safely",
                         "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap “Do it” to commit it.")
                 }
 
                 Section("Using Mark mode") {
                     VStack(alignment: .leading, spacing: 12) {
-                        markParagraph("highlighter", .purple,
+                        markParagraph("🖍️",
                             "Mark mode is for trying out a path. Tap the **Mark** button and the board turns into a scratch pad: tap a square once for a guess-dot, again for a guess-\(piece.noun) — exactly like the real board, but nothing is committed yet.")
-                        markParagraph("arrow.triangle.branch", .blue,
+                        markParagraph("🧭",
                             "Pick a square you’re unsure about and guess a \(piece.noun) there. Then follow the consequences — place the dots and \(piece.plural) that guess forces. If it all holds together, tap **Do it** to make the guesses real.")
-                        markParagraph("lightbulb.min", .orange,
+                        markParagraph("❌",
                             "If the path leads to a contradiction, then your first guess was wrong — so that square is actually a **dot**. Either way you’ve learned something, and often you can read off several more squares from there.")
-                        markParagraph("square.dashed", .pink,
+                        markParagraph("📍",
                             "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you should know whether it’s a \(piece.noun) or a dot, so mark it for real.")
                     }
                     .padding(.vertical, 2)
@@ -91,11 +91,10 @@ struct HelpView: View {
         }
     }
 
-    private func markParagraph(_ symbol: String, _ tint: Color, _ text: LocalizedStringKey) -> some View {
+    private func markParagraph(_ emoji: String, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(tint)
+            Text(emoji)
+                .font(.title2)
                 .frame(width: 28)
             Text(text)
                 .font(.footnote)
@@ -103,11 +102,11 @@ struct HelpView: View {
         }
     }
 
-    private func rule(_ symbol: String, _ text: String) -> some View {
+    private func rule(_ emoji: String, _ text: String) -> some View {
         Label {
             Text(text)
         } icon: {
-            Image(systemName: symbol).foregroundStyle(.red)
+            Text(emoji).font(.title3)
         }
     }
 
@@ -145,11 +144,10 @@ struct HelpView: View {
         }
     }
 
-    private func tip(_ symbol: String, _ title: String, _ body: String) -> some View {
+    private func tip(_ emoji: String, _ title: String, _ body: String) -> some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(.purple)
+            Text(emoji)
+                .font(.title2)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.subheadline.bold())

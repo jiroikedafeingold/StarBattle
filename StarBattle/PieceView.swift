@@ -29,7 +29,7 @@ private struct EmojiPiece: View {
 
     var body: some View {
         Text(style.emoji)
-            .font(.system(size: size * 0.74))
+            .font(.system(size: size * 0.82))
             .saturation(isWrong ? 0 : 1)
             .opacity(isWrong ? 0.75 : 1)
             .shadow(color: .black.opacity(0.22), radius: size * 0.035, x: 0, y: size * 0.02)

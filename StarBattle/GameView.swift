@@ -284,7 +284,9 @@ struct GameView: View {
             showBanner = true
             return
         }
-        let order = model.starPositions.sorted { ($0.row, $0.col) < ($1.row, $1.col) }
+        // Burst the pieces in a random order rather than reading-order, so the finale
+        // feels like scattered fireworks instead of a sweep.
+        let order = model.starPositions.shuffled()
         explosionStars = order
         explodedCount = 0
         showBanner = false

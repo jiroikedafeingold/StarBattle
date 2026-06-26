@@ -170,7 +170,7 @@ private struct CellView: View {
                 EmptyView()
             case .star:
                 if !hideStar {
-                    PieceView(style: pieceStyle, isWrong: isWrong, size: cellSize * 0.80)
+                    PieceView(style: pieceStyle, isWrong: isWrong, size: cellSize * 0.84)
                 }
             case .dot:
                 Circle()
@@ -214,7 +214,7 @@ struct GuessGlyph: View {
         case .guessStar:
             // A soft, faded piece — a quiet "this will be a cherry" hint on the
             // pale-yellow cell.
-            PieceView(style: pieceStyle, isWrong: false, size: cellSize * 0.80)
+            PieceView(style: pieceStyle, isWrong: false, size: cellSize * 0.84)
                 .opacity(0.42)
         case .guessEmpty:
             Circle()
