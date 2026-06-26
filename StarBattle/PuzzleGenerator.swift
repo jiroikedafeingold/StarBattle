@@ -40,6 +40,23 @@ nonisolated enum PuzzleGenerator {
     /// unavoidable, and Hard boards force it many times (often 8–25).
     static let hardMinTier2 = 6
 
+    /// An Easy board must contain at least this many "simple" regions — ones of
+    /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is
+    /// very constraining and usually cracks open by single-cell logic, so guaranteeing
+    /// several of them keeps Easy boards genuinely gentle.
+    static let easyMinSmallRegions = 5
+    static let easySmallRegionMaxCells = 6
+
+    /// Counts regions of `maxCells` cells or fewer in a layout.
+    static func smallRegionCount(_ regions: [[Int]], size: Int,
+                                 maxCells: Int = easySmallRegionMaxCells) -> Int {
+        var counts: [Int: Int] = [:]
+        for r in 0..<size {
+            for c in 0..<size { counts[regions[r][c], default: 0] += 1 }
+        }
+        return counts.values.filter { $0 <= maxCells }.count
+    }
+
     /// Grades a board by *how often it forces the hard (depth-2) technique* — the peak
     /// technique and its frequency, not the aggregate step count. This is what makes
     /// "Hard" reliably hard: Easy never needs depth-2, Medium needs it occasionally,
@@ -125,8 +142,17 @@ nonisolated enum PuzzleGenerator {
             onProgress?(attempt, .tuning)
             let board = LogicBoard(regions: regions, size: size, stars: stars)
             if difficulty == .easy {
-                if board.tier1Solve() != nil { return puzzle }
-                fallback = fallback ?? puzzle
+                // Require a board that both solves by simple single-cell logic AND has
+                // at least `easyMinSmallRegions` little regions. Keep the best near-miss
+                // (a tier-1 board) as a fallback for the rare run that never qualifies.
+                if board.tier1Solve() != nil {
+                    if smallRegionCount(regions, size: size) >= easyMinSmallRegions {
+                        return puzzle
+                    }
+                    fallback = fallback ?? puzzle
+                } else {
+                    fallback = fallback ?? puzzle
+                }
             } else if let profile = board.difficultyProfile() {
                 if band(forProfile: profile) == difficulty { return puzzle }
                 fallback = fallback ?? puzzle
@@ -281,9 +307,12 @@ nonisolated enum PuzzleGenerator {
         var target = sizeOf
         if preferSmallRegions, pairs.count > 1 {
             let idsBySize = (0..<pairs.count).sorted { sizeOf[$0] < sizeOf[$1] }
-            let smallCount = max(1, Int(Double(pairs.count) * 0.6))
+            // Aim for more small regions than the minimum we require, so the few that
+            // drift larger during refinement still leave enough simple regions behind.
+            let smallCount = min(pairs.count - 1,
+                                 max(easyMinSmallRegions + 2, Int(Double(pairs.count) * 0.7)))
             for (rank, id) in idsBySize.enumerated() where rank < smallCount {
-                target[id] = max(sizeOf[id], Int.random(in: 3...6, using: &rng))
+                target[id] = max(sizeOf[id], Int.random(in: 3...5, using: &rng))
             }
             let smallSum = idsBySize.prefix(smallCount).reduce(0) { $0 + target[$1] }
             let largeIds = Array(idsBySize.dropFirst(smallCount))
