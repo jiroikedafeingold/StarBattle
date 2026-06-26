@@ -4,7 +4,7 @@ import SwiftUI
 /// appearance, a first-launch onboarding cover, and saving the game when the app is
 /// backgrounded.
 struct ContentView: View {
-    @AppStorage(SettingsKey.appearance) private var appearance = AppearanceMode.system.rawValue
+    @AppStorage(SettingsKey.appearance) private var appearance = AppearanceMode.dark.rawValue
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
 
     @State private var model = GameViewModel()
@@ -12,7 +12,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var appearanceMode: AppearanceMode {
-        AppearanceMode(rawValue: appearance) ?? .system
+        AppearanceMode(rawValue: appearance) ?? .dark
     }
 
     var body: some View {

@@ -11,6 +11,20 @@ enum SettingsKey {
     static let difficulty = "difficulty"
     static let cleanWins = "cleanWins"
     static let difficultyPromptShown = "difficultyPromptShown"
+    /// Whether placing a piece automatically dots its eight neighbours. Default on.
+    static let autoDot = "autoDot"
+    /// Whether dragging across the board paints a line of dots. Default on.
+    static let swipeDots = "swipeDots"
+    /// Whether haptic feedback fires on taps, checks and wins. Default on.
+    static let haptics = "haptics"
+    /// Whether the falling-confetti animation plays on a win. Default on.
+    static let winCelebration = "winCelebration"
+
+    /// Reads a Bool that should default to `true` when the user hasn't set it yet.
+    static func boolDefaultingTrue(_ key: String) -> Bool {
+        let defaults = UserDefaults.standard
+        return defaults.object(forKey: key) == nil ? true : defaults.bool(forKey: key)
+    }
 }
 
 /// Puzzle difficulty, graded by the *peak* technique a solve forces and how often —
@@ -36,7 +50,8 @@ nonisolated enum Difficulty: String, CaseIterable, Identifiable {
 /// The glyph the player places on the board. The cherry is the default (and the
 /// app icon); the rest are simple tintable alternatives.
 enum PieceStyle: String, CaseIterable, Identifiable {
-    case cherry, star, queen, diamond, heart
+    case cherry, star, heart, diamond, queen
+    case dog, cat, bunny, turtle, bird, fish, ladybug
 
     var id: String { rawValue }
 
@@ -47,22 +62,36 @@ enum PieceStyle: String, CaseIterable, Identifiable {
     /// hints (e.g. "place a star here").
     var noun: String {
         switch self {
-        case .cherry: return "cherry"
-        case .star:   return "star"
-        case .queen:  return "queen"
+        case .cherry:  return "cherry"
+        case .star:    return "star"
+        case .queen:   return "queen"
         case .diamond: return "diamond"
-        case .heart:  return "heart"
+        case .heart:   return "heart"
+        case .dog:     return "dog"
+        case .cat:     return "cat"
+        case .bunny:   return "bunny"
+        case .turtle:  return "turtle"
+        case .bird:    return "bird"
+        case .fish:    return "fish"
+        case .ladybug: return "ladybug"
         }
     }
 
     /// The lowercase plural noun (e.g. "two stars per row").
     var plural: String {
         switch self {
-        case .cherry: return "cherries"
-        case .star:   return "stars"
-        case .queen:  return "queens"
+        case .cherry:  return "cherries"
+        case .star:    return "stars"
+        case .queen:   return "queens"
         case .diamond: return "diamonds"
-        case .heart:  return "hearts"
+        case .heart:   return "hearts"
+        case .dog:     return "dogs"
+        case .cat:     return "cats"
+        case .bunny:   return "bunnies"
+        case .turtle:  return "turtles"
+        case .bird:    return "birds"
+        case .fish:    return "fish"
+        case .ladybug: return "ladybugs"
         }
     }
 
@@ -80,6 +109,25 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         case .queen:   return "crown.fill"
         case .diamond: return "suit.diamond.fill"
         case .heart:   return "suit.heart.fill"
+        case .dog:     return "dog.fill"
+        case .cat:     return "cat.fill"
+        case .bunny:   return "hare.fill"
+        case .turtle:  return "tortoise.fill"
+        case .bird:    return "bird.fill"
+        case .fish:    return "fish.fill"
+        case .ladybug: return "ladybug.fill"
+        }
+    }
+
+    /// A symbol guaranteed to exist on iOS 17, used when `symbolName` isn't available
+    /// on the running OS (e.g. `dog.fill`/`cat.fill` are newer). Resolved at runtime.
+    var fallbackSymbol: String {
+        switch self {
+        case .dog, .cat: return "pawprint.fill"
+        case .bird:      return "leaf.fill"
+        case .fish:      return "drop.fill"
+        case .ladybug:   return "ant.fill"
+        default:         return symbolName
         }
     }
 }

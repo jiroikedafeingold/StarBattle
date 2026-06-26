@@ -23,6 +23,11 @@ final class GameViewModel {
     private(set) var isSolved = false
     var elapsedSeconds = 0
 
+    /// While a board is generating, the phase it's in and the attempt number, so the
+    /// overlay can show live progress instead of a bare spinner. Nil when idle.
+    private(set) var generationStage: GenerationStage?
+    private(set) var generationAttempt = 0
+
     /// Stars flagged by the last "Check" as not belonging to the solution. Cleared
     /// as soon as the player changes the board.
     private(set) var wrongStars: Set<GridPosition> = []
@@ -98,9 +103,11 @@ final class GameViewModel {
     /// On-disk pool of previously generated puzzles, for launch-screen variety.
     private let store = PuzzleStore()
 
-    /// Puzzles generated ahead of time so "New Puzzle" is instant even on rapid
-    /// taps. Kept topped up to `prefetchDepth`.
-    private var prefetchQueue: [Task<Puzzle, Never>] = []
+    /// Puzzles generated ahead of time so "New Puzzle" is instant even on rapid taps.
+    /// Boards land here only once fully built; `newGame` takes one if available, else
+    /// it generates on demand (showing progress). Kept topped up to `prefetchDepth`.
+    private var prefetchReady: [Puzzle] = []
+    private var prefetchInFlight = 0
     private let prefetchDepth = 2
     /// The most recently scheduled generation. Each new build waits on it before
     /// starting, so the (CPU-heavy) builds run one-at-a-time instead of all at once
@@ -175,15 +182,34 @@ final class GameViewModel {
         isGenerating = true
         isSolved = false
         elapsedSeconds = 0
+        generationStage = .placing
+        generationAttempt = 0
 
         // Keep the "Creating a new board…" indicator on screen long enough to read,
         // even when a prefetched puzzle is ready instantly.
         let start = ContinuousClock.now
         let fresh: Puzzle
-        if !prefetchQueue.isEmpty {
-            fresh = await prefetchQueue.removeFirst().value
+        if !prefetchReady.isEmpty {
+            fresh = prefetchReady.removeFirst()
         } else {
-            fresh = await PuzzleGenerator.generate(difficulty: difficulty)
+            // Build on demand, streaming each phase to the overlay. The progress closure
+            // runs on the generator's background thread; the stream hops it to the main
+            // actor here. (`continuation` is Sendable, so the closure stays Sendable.)
+            // Only the latest phase matters, so keep a buffer of one — a long build can
+            // emit thousands of updates and we never want them to pile up.
+            let (stream, continuation) = AsyncStream.makeStream(
+                of: (Int, GenerationStage).self, bufferingPolicy: .bufferingNewest(1))
+            let consumer = Task { @MainActor [weak self] in
+                for await (attempt, stage) in stream {
+                    self?.generationAttempt = attempt
+                    self?.generationStage = stage
+                }
+            }
+            fresh = await PuzzleGenerator.generate(difficulty: difficulty) { attempt, stage in
+                continuation.yield((attempt, stage))
+            }
+            continuation.finish()
+            await consumer.value
         }
         let minimumShown = Duration.milliseconds(450)
         let elapsed = start.duration(to: ContinuousClock.now)
@@ -204,6 +230,7 @@ final class GameViewModel {
         guessGhost = nil
         isHighlightMode = false
         isGenerating = false
+        generationStage = nil
         hintUsedThisGame = false
         badPlacementThisGame = false
 
@@ -224,7 +251,9 @@ final class GameViewModel {
         guard new != difficulty else { return }
         difficulty = new
         UserDefaults.standard.set(new.rawValue, forKey: SettingsKey.difficulty)
-        prefetchQueue.removeAll()
+        // Drop boards prepared for the old level. Any still-in-flight builds finish but
+        // are discarded on completion (their level no longer matches).
+        prefetchReady.removeAll()
         prefetchTail = nil
         Task { await newGame() }
     }
@@ -233,20 +262,26 @@ final class GameViewModel {
     /// run concurrently off the main actor, so several puzzles prepare in parallel.
     /// Each finished puzzle is also saved to the on-disk pool for launch variety.
     private func topUpPrefetch() {
-        while prefetchQueue.count < prefetchDepth {
+        while prefetchReady.count + prefetchInFlight < prefetchDepth {
             // Chain each build onto the previous one so they run sequentially at low
             // priority rather than competing for the CPU all at once.
             let previous = prefetchTail
             let level = difficulty
+            prefetchInFlight += 1
             let task = Task.detached(priority: .background) { () -> Puzzle in
                 _ = await previous?.value
                 return PuzzleGenerator.buildPuzzle(difficulty: level)
             }
             prefetchTail = task
-            prefetchQueue.append(task)
             Task { [weak self] in
                 let puzzle = await task.value
-                self?.store.add(puzzle)
+                guard let self else { return }
+                self.store.add(puzzle)            // pooled for launch variety
+                self.prefetchInFlight -= 1
+                // Only keep it ready if it still matches the current level (the player
+                // may have switched difficulty while it was building).
+                if level == self.difficulty { self.prefetchReady.append(puzzle) }
+                self.topUpPrefetch()
             }
         }
     }
@@ -275,6 +310,11 @@ final class GameViewModel {
     /// surrounding cells (where a star is now impossible). A third tap clears the
     /// star and removes only those auto-placed dots, leaving any dots the player
     /// had already placed by hand untouched.
+    /// Whether placing a piece auto-dots its neighbours (Settings; default on).
+    private var autoDotEnabled: Bool { SettingsKey.boolDefaultingTrue(SettingsKey.autoDot) }
+    /// Whether dragging paints a line of dots on the real board (Settings; default on).
+    private var swipeToDotEnabled: Bool { SettingsKey.boolDefaultingTrue(SettingsKey.swipeDots) }
+
     func tap(row: Int, col: Int) {
         guard !isGenerating, !isSolved, !isRealizing else { return }
 
@@ -291,7 +331,7 @@ final class GameViewModel {
             case .guessEmpty:
                 highlightAutoDotCount[pos] = nil      // this cell becomes a cherry guess
                 highlights[row][col] = .guessStar
-                addGuessAutoDots(around: pos)
+                if autoDotEnabled { addGuessAutoDots(around: pos) }
                 lastActionPlacedStar = true
             case .guessStar:
                 removeGuessAutoDots(around: pos)
@@ -321,7 +361,7 @@ final class GameViewModel {
             lastActionPlacedStar = false
         case .dot:
             marks[row][col] = .star
-            addAutoDots(around: pos)
+            if autoDotEnabled { addAutoDots(around: pos) }
             lastActionPlacedStar = true
             if !puzzle.solution.contains(pos) { badPlacementThisGame = true }
         case .star:
@@ -420,6 +460,9 @@ final class GameViewModel {
     /// Starts a drag stroke: snapshots the board once for Undo and for recomputation.
     func beginDrag() {
         guard !isGenerating, !isSolved, !isRealizing else { return }
+        // Mark mode is all about sketching guesses, so swiping always works there. On
+        // the real board it's gated by the "swipe to draw dots" setting.
+        if !isHighlightMode && !swipeToDotEnabled { return }
         pushHistory()
         dragLength = 0
         if isHighlightMode {

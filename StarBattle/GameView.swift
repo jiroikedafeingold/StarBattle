@@ -18,6 +18,8 @@ struct GameView: View {
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
+    @AppStorage(SettingsKey.haptics) private var haptics = true
+    @AppStorage(SettingsKey.winCelebration) private var winCelebration = true
 
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.verticalSizeClass) private var vSize
@@ -55,6 +57,9 @@ struct GameView: View {
                 }
             }
             .frame(height: 150)
+            // Lift the control bar off the tab bar so it sits centred in the space
+            // between the board and the bottom of the screen.
+            .padding(.bottom, 28)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
@@ -110,26 +115,30 @@ struct GameView: View {
             Text("You've solved five puzzles with no hints or wrong cherries. Ready to step up to \(difficulty.harder?.label ?? "a harder level")?")
         }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
-            model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
-                                       : .impact(weight: .light, intensity: 0.6)
+            guard haptics else { return nil }
+            return model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
+                                              : .impact(weight: .light, intensity: 0.6)
         }
         .sensoryFeedback(trigger: model.isSolved) { wasSolved, isSolved in
-            (isSolved && !wasSolved) ? .success : nil
+            (haptics && isSolved && !wasSolved) ? .success : nil
         }
         // A long, swelling "confetti brushing past you" burst when the puzzle is solved.
         .onChange(of: model.celebrationPulse) { _, _ in
-            celebrationHaptics.play()
+            if haptics { celebrationHaptics.play() }
         }
         // A clear tap every time Check is pressed; a clean board also gets a success
         // chime. A wrong cherry adds the strong, longer buzz below.
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
-            model.lastCheckHadErrors ? .impact(weight: .medium, intensity: 0.9) : .success
+            guard haptics else { return nil }
+            return model.lastCheckHadErrors ? .impact(weight: .medium, intensity: 0.9) : .success
         }
         // A strong, repeated buzz when Check reveals a wrong cherry.
         .sensoryFeedback(trigger: model.wrongPulse) { _, _ in
-            .impact(weight: .heavy, intensity: 1.0)
+            haptics ? .impact(weight: .heavy, intensity: 1.0) : nil
         }
-        .sensoryFeedback(trigger: model.hintPulse) { _, _ in .impact(weight: .medium) }
+        .sensoryFeedback(trigger: model.hintPulse) { _, _ in
+            haptics ? .impact(weight: .medium) : nil
+        }
         .task {
             // A simple one-second timer that runs while a puzzle is in progress.
             while !Task.isCancelled {
@@ -156,7 +165,7 @@ struct GameView: View {
                     .padding(.top, 1)
             }
             difficultyPicker
-                .padding(.top, 2)
+                .padding(.top, 12)
         }
     }
 
@@ -196,15 +205,7 @@ struct GameView: View {
             .opacity(model.isGenerating ? 0.12 : 1)
 
             if model.isGenerating {
-                VStack(spacing: 12) {
-                    ProgressView()
-                        .controlSize(.large)
-                    Text("Creating a new board…")
-                        .font(.headline)
-                }
-                .padding(28)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
-                .shadow(radius: 8)
+                GeneratingView(stage: model.generationStage)
             }
         }
         .frame(width: side, height: side)
@@ -236,7 +237,9 @@ struct GameView: View {
 
     private var celebration: some View {
         ZStack {
-            CelebrationView()
+            if winCelebration {
+                CelebrationView()
+            }
             solvedBanner
         }
     }
@@ -341,63 +344,41 @@ struct GameView: View {
     }
 }
 
-/// A warm grey, lightly-textured backdrop behind the game.
+/// A cherry-themed, vignette-style backdrop. Dark mirrors the intro screen; light is
+/// a soft blush-white version that keeps the same shape and warmth.
 struct AppBackground: View {
+    @Environment(\.colorScheme) private var scheme
+
     var body: some View {
-        ZStack {
-            Color(.systemGray6)
-            // A warm tint over the neutral grey.
-            Color(red: 0.55, green: 0.44, blue: 0.36).opacity(0.07)
-            GrainTexture()
-        }
+        RadialGradient(
+            gradient: scheme == .dark ? Self.darkStops : Self.lightStops,
+            center: UnitPoint(x: 0.5, y: 0.40),
+            startRadius: 0, endRadius: 560)
     }
+
+    private static let darkStops = Gradient(stops: [
+        .init(color: Color(hex: 0x220912), location: 0.0),
+        .init(color: Color(hex: 0x140609), location: 0.58),
+        .init(color: Color(hex: 0x0B0405), location: 1.0)
+    ])
+
+    private static let lightStops = Gradient(stops: [
+        .init(color: Color(hex: 0xFFF7F8), location: 0.0),
+        .init(color: Color(hex: 0xFCE9EC), location: 0.58),
+        .init(color: Color(hex: 0xF2D9DD), location: 1.0)
+    ])
 }
 
-/// A faint dotted grain that gives the background a subtle paper-like texture.
-private struct GrainTexture: View {
-    var body: some View {
-        Canvas { ctx, size in
-            let step: CGFloat = 7
-            var y: CGFloat = 0
-            var row = 0
-            while y < size.height {
-                var x: CGFloat = (row % 2 == 0) ? 0 : step / 2
-                while x < size.width {
-                    ctx.fill(
-                        Path(ellipseIn: CGRect(x: x, y: y, width: 1.1, height: 1.1)),
-                        with: .color(.black.opacity(0.05)))
-                    x += step
-                }
-                y += step
-                row += 1
-            }
-        }
-        .allowsHitTesting(false)
-    }
-}
-
-/// The refined game title: "Cherry Battle" in a glossy red gradient with a soft
-/// drop shadow and a small cherry accent.
+/// The game title, matching the intro screen's wordmark: "Cherry Battle" in a bold
+/// rounded face with a light "Cherry" and a cherry-red "Battle".
 struct GameTitle: View {
     var body: some View {
-        HStack(spacing: 8) {
-            titleText("Cherry")
-            PieceView(style: .cherry, isWrong: false, size: 30)
-                .shadow(color: .red.opacity(0.25), radius: 3, y: 1)
-            titleText("Battle")
-        }
-        .accessibilityElement()
-        .accessibilityLabel("Cherry Battle")
-    }
-
-    private func titleText(_ s: String) -> some View {
-        Text(s)
-            .font(.system(size: 32, weight: .heavy, design: .serif))
-            .foregroundStyle(
-                LinearGradient(colors: [Color(red: 0.95, green: 0.26, blue: 0.30),
-                                        Color(red: 0.74, green: 0.05, blue: 0.12)],
-                               startPoint: .top, endPoint: .bottom))
-            .shadow(color: .black.opacity(0.18), radius: 1, y: 1)
+        // "Cherry" uses the primary label colour so it reads on either background
+        // (near-white in dark, near-black in light); "Battle" stays cherry red.
+        (Text(verbatim: "Cherry ").foregroundColor(.primary)
+         + Text(verbatim: "Battle").foregroundColor(Color(hex: 0xE51937)))
+            .font(.system(size: 40, weight: .bold, design: .rounded))
+            .accessibilityLabel("Cherry Battle")
     }
 }
 

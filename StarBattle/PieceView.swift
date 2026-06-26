@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// The mark the player places on the board, drawn according to the chosen
 /// `PieceStyle`. The cherry is a custom Canvas drawing; the other styles are
@@ -34,11 +37,26 @@ private struct SymbolPiece: View {
         case .diamond: return Color(red: 0.90, green: 0.16, blue: 0.30)
         case .heart:   return Color(red: 0.90, green: 0.16, blue: 0.30)
         case .cherry:  return .red
+        case .dog:     return Color(red: 0.60, green: 0.41, blue: 0.22)   // brown
+        case .cat:     return Color(red: 0.96, green: 0.52, blue: 0.12)   // ginger
+        case .bunny:   return Color(red: 0.91, green: 0.45, blue: 0.62)   // pink
+        case .turtle:  return Color(red: 0.20, green: 0.62, blue: 0.34)   // green
+        case .bird:    return Color(red: 0.20, green: 0.55, blue: 0.90)   // blue
+        case .fish:    return Color(red: 0.10, green: 0.62, blue: 0.66)   // teal
+        case .ladybug: return Color(red: 0.85, green: 0.13, blue: 0.16)   // red
         }
     }
 
+    /// `style.symbolName`, or its iOS-17 fallback when the symbol isn't on this OS.
+    private var resolvedSymbol: String {
+        #if canImport(UIKit)
+        if UIImage(systemName: style.symbolName) == nil { return style.fallbackSymbol }
+        #endif
+        return style.symbolName
+    }
+
     var body: some View {
-        Image(systemName: style.symbolName)
+        Image(systemName: resolvedSymbol)
             .resizable()
             .aspectRatio(contentMode: .fit)
             .foregroundStyle(tint)

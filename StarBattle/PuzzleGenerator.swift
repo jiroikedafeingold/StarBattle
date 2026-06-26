@@ -12,13 +12,24 @@ import Foundation
 ///      alternate solution exists, nudge a region boundary to destroy it (see
 ///      `killAlternate`). Attacking a *random* alternate avoids cycles. This
 ///      converges on a layout whose only solution is the one we started with.
+/// The phase a board generation is currently in, surfaced so the UI can show what's
+/// happening during the (occasionally long) build rather than a bare spinner.
+nonisolated enum GenerationStage: Sendable {
+    case placing    // laying down a valid cherry pattern
+    case shaping    // growing the coloured regions
+    case checking   // forcing the layout to a single solution
+    case tuning     // confirming it hits the requested difficulty
+}
+
 nonisolated enum PuzzleGenerator {
 
-    /// Async entry point so generation runs off the main actor.
+    /// Async entry point so generation runs off the main actor. `onProgress` (if given)
+    /// is called from the background with the current attempt number and phase.
     static func generate(size: Int = 10, stars: Int = 2,
-                         difficulty: Difficulty = .easy) async -> Puzzle {
+                         difficulty: Difficulty = .easy,
+                         onProgress: (@Sendable (Int, GenerationStage) -> Void)? = nil) async -> Puzzle {
         await Task.detached(priority: .userInitiated) {
-            buildPuzzle(size: size, stars: stars, difficulty: difficulty)
+            buildPuzzle(size: size, stars: stars, difficulty: difficulty, onProgress: onProgress)
         }.value
     }
 
@@ -47,7 +58,8 @@ nonisolated enum PuzzleGenerator {
     // MARK: - Top level
 
     static func buildPuzzle(size: Int = 10, stars: Int = 2,
-                            difficulty: Difficulty = .easy) -> Puzzle {
+                            difficulty: Difficulty = .easy,
+                            onProgress: (@Sendable (Int, GenerationStage) -> Void)? = nil) -> Puzzle {
         var rng = SystemRandomNumberGenerator()
         var fallback: Puzzle?         // any solvable puzzle, regardless of band
         var nonUniqueFallback: Puzzle?
@@ -63,10 +75,12 @@ nonisolated enum PuzzleGenerator {
         // only bounds the rare unlucky run; on a miss we fall back to any solvable
         // board (closest difficulty we found). `HintEngine` reveals a correct cell as
         // a final backstop, so "Hint" always has a move.
-        for _ in 0..<500 {
+        for attempt in 0..<500 {
+            onProgress?(attempt, .placing)
             guard let solution = randomSolution(size: size, stars: stars, rng: &rng) else {
                 continue
             }
+            onProgress?(attempt, .shaping)
             var built: [[Int]]?
             for _ in 0..<8 {
                 if let candidate = growRegions(solution: solution, size: size, rng: &rng) {
@@ -77,6 +91,7 @@ nonisolated enum PuzzleGenerator {
             guard var regions = built else { continue }
             var success = false
 
+            onProgress?(attempt, .checking)
             for _ in 0..<refinementCap {
                 let solutions = findSolutions(regions: regions, size: size, stars: stars, limit: 6)
                 let alternates = solutions.filter { $0 != solution }
@@ -106,6 +121,7 @@ nonisolated enum PuzzleGenerator {
             // depth-2 profile is unavoidable (it's what tells them apart), but it stays
             // cheap on the Easy candidates it skips past (those solve at tier 1). Any
             // unique board is a valid fallback, so keep the first one we see.
+            onProgress?(attempt, .tuning)
             let board = LogicBoard(regions: regions, size: size, stars: stars)
             if difficulty == .easy {
                 if board.tier1Solve() != nil { return puzzle }
