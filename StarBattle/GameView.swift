@@ -237,7 +237,7 @@ struct GameView: View {
             }
 
             if model.isGenerating {
-                GeneratingView(stage: model.generationStage)
+                GeneratingView(stage: model.generationStage, attempt: model.generationAttempt)
             }
         }
         .frame(width: side, height: side)
@@ -522,13 +522,13 @@ private struct ToolButton: View {
     var tint: Color = .accentColor
     var style: Style = .normal
     var isEnabled: Bool = true
-    /// An optional hidden action triggered by a long (15s) press. Used for the secret
+    /// An optional hidden action triggered by a long (10s) press. Used for the secret
     /// near-solve on the Hint button; nil (and inert) for every other button.
     var onLongPress: (() -> Void)? = nil
     let action: () -> Void
 
     /// Times the secret hold: started when the finger lands and cancelled the instant
-    /// it lifts, so the action only fires after a full, uninterrupted 15s press.
+    /// it lifts, so the action only fires after a full, uninterrupted 10s press.
     @State private var holdTask: Task<Void, Never>?
 
     var body: some View {
@@ -566,7 +566,7 @@ private struct ToolButton: View {
                 // it fires so further onChanged ticks during the same hold can't re-arm it.
                 guard holdTask == nil else { return }
                 holdTask = Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(15))
+                    try? await Task.sleep(for: .seconds(10))
                     guard !Task.isCancelled else { return }
                     perform()
                 }

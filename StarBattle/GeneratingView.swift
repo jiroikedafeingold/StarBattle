@@ -6,39 +6,93 @@ import SwiftUI
 /// filling a little board, plus the current step of the build so it never looks stuck.
 struct GeneratingView: View {
     let stage: GenerationStage?
+    /// How many candidate boards the generator has tried so far. Shown once it climbs,
+    /// so a rare slow build visibly looks like it's working rather than stuck.
+    var attempt: Int = 0
 
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
     private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+
+    /// The four build phases, each with an icon, shown as a left-to-right progress track.
+    private static let steps: [(stage: GenerationStage, icon: String)] = [
+        (.placing, "square.grid.3x3.fill"),
+        (.shaping, "paintpalette.fill"),
+        (.checking, "checkmark.seal.fill"),
+        (.tuning, "slider.horizontal.3")
+    ]
 
     var body: some View {
         VStack(spacing: 16) {
             PieceBuildAnimation(piece: piece)
                 .frame(width: 132, height: 132)
 
+            stepTracker
+
             VStack(spacing: 4) {
                 Text("Creating a new board…")
                     .font(.headline)
-                Text(Self.stageText(stage))
+                Text(stageText(stage))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .contentTransition(.opacity)
                     .animation(.easeInOut(duration: 0.25), value: stage)
+                if attempt > 2 {
+                    Text("Attempt \(attempt + 1)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .contentTransition(.numericText())
+                        .animation(.easeInOut(duration: 0.25), value: attempt)
+                }
             }
             .multilineTextAlignment(.center)
         }
         .padding(28)
+        .frame(maxWidth: 320)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 20))
         .shadow(radius: 8)
     }
 
-    /// A short, friendly description of the current build phase.
-    private static func stageText(_ stage: GenerationStage?) -> LocalizedStringKey {
+    /// 1…4 for the current phase, 0 before it begins.
+    private var current: Int {
         switch stage {
-        case .placing: "Placing cherries…"
-        case .shaping: "Shaping the regions…"
-        case .checking: "Checking for one solution…"
-        case .tuning: "Tuning the difficulty…"
-        case nil: "Getting ready…"
+        case .placing: 1
+        case .shaping: 2
+        case .checking: 3
+        case .tuning: 4
+        case nil: 0
+        }
+    }
+
+    /// A four-step track that fills as the build advances, so progress is visible at a
+    /// glance even when a single phase's text lingers.
+    private var stepTracker: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(Self.steps.enumerated()), id: \.offset) { i, step in
+                let reached = current >= i + 1
+                Image(systemName: step.icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(reached ? Color.accentColor : Color.secondary.opacity(0.35))
+                    .scaleEffect(current == i + 1 ? 1.2 : 1)
+                    .animation(.spring(duration: 0.3), value: current)
+                if i < Self.steps.count - 1 {
+                    Capsule()
+                        .fill(current >= i + 2 ? Color.accentColor : Color.secondary.opacity(0.25))
+                        .frame(width: 14, height: 2)
+                        .animation(.easeInOut(duration: 0.25), value: current)
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    /// A short, friendly description of the current build phase.
+    private func stageText(_ stage: GenerationStage?) -> LocalizedStringKey {
+        switch stage {
+        case .placing:  "Scattering \(piece.plural) across the grid…"
+        case .shaping:  "Drawing the coloured regions…"
+        case .checking: "Making sure there's exactly one solution…"
+        case .tuning:   "Tuning the challenge…"
+        case nil:       "Getting ready…"
         }
     }
 }

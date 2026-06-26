@@ -108,7 +108,7 @@ final class GameViewModel {
     /// it generates on demand (showing progress). Kept topped up to `prefetchDepth`.
     private var prefetchReady: [Puzzle] = []
     private var prefetchInFlight = 0
-    private let prefetchDepth = 2
+    private let prefetchDepth = 3
     /// The most recently scheduled generation. Each new build waits on it before
     /// starting, so the (CPU-heavy) builds run one-at-a-time instead of all at once
     /// — two concurrent builds used to starve the main thread and make the board
@@ -155,11 +155,14 @@ final class GameViewModel {
         }
         isGenerating = false
 
-        // Don't spin up background generation inside SwiftUI previews. Defer it a
-        // beat so the first frame and the first taps stay smooth on launch.
+        // Don't spin up background generation inside SwiftUI previews. Start warming
+        // the prefetch queue almost immediately on launch — the model is created behind
+        // the intro screen, so boards are usually ready by the time the player taps New.
+        // A short defer keeps the very first frame smooth; the builds run at background
+        // priority off the main actor.
         if !isPreview {
             Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(250))
+                try? await Task.sleep(for: .milliseconds(80))
                 self?.topUpPrefetch()
             }
         }
