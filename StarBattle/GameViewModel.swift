@@ -684,6 +684,37 @@ final class GameViewModel {
         hintFocus = nil
     }
 
+    /// Hidden helper: fills in the entire solution except a single cherry, leaving the
+    /// board one move from solved. Reached only by a long, secret press on the Hint
+    /// button. Undoable as one step. Flagged like a hint so the resulting win never
+    /// counts toward the clean-solve streak.
+    func revealAllButOne() {
+        guard !isGenerating, !isRealizing, !isSolved, !isHighlightMode,
+              !puzzle.solution.isEmpty else { return }
+        pushHistory()
+        clearCheck()
+        dismissHint()
+
+        // Start from a clean board so stray marks and auto-dots don't linger.
+        marks = Self.emptyMarks(size: puzzle.size)
+        highlights = Self.emptyHighlights(size: puzzle.size)
+        autoDotCount.removeAll()
+        highlightAutoDotCount.removeAll()
+        firstGuessCell = nil
+        guessGhost = nil
+
+        let cells = puzzle.solution.sorted { ($0.row, $0.col) < ($1.row, $1.col) }
+        guard let omitted = cells.last else { return }
+        for pos in cells where pos != omitted {
+            marks[pos.row][pos.col] = .star
+            if autoDotEnabled { addAutoDots(around: pos) }
+        }
+
+        hintUsedThisGame = true          // an assisted board — not a clean win
+        lastActionPlacedStar = true
+        tapPulse &+= 1
+    }
+
     // MARK: - Highlight (guessing) mode
 
     /// Enters or leaves Highlight mode. Leaving keeps the painted guesses on the

@@ -100,36 +100,46 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         plural.prefix(1).uppercased() + plural.dropFirst()
     }
 
-    /// The SF Symbol used for every style except the custom-drawn cherry.
-    /// (`cherry` is rendered by `CherryView`, so this is unused for it.)
-    var symbolName: String {
+    /// The colour emoji drawn for every style except the custom-drawn cherry, so the
+    /// pieces read as bright, recognisable objects rather than flat monochrome symbols.
+    /// (`cherry` is rendered by `CherryView`, so its value here is unused.)
+    var emoji: String {
         switch self {
-        case .cherry:  return "circle.fill"   // unused — cherry uses CherryView
-        case .star:    return "star.fill"
-        case .queen:   return "crown.fill"
-        case .diamond: return "suit.diamond.fill"
-        case .heart:   return "suit.heart.fill"
-        case .dog:     return "dog.fill"
-        case .cat:     return "cat.fill"
-        case .bunny:   return "hare.fill"
-        case .turtle:  return "tortoise.fill"
-        case .bird:    return "bird.fill"
-        case .fish:    return "fish.fill"
-        case .ladybug: return "ladybug.fill"
+        case .cherry:  return "🍒"   // unused — cherry uses CherryView
+        case .star:    return "⭐️"
+        case .queen:   return "👑"
+        case .diamond: return "💎"
+        case .heart:   return "❤️"
+        case .dog:     return "🐶"
+        case .cat:     return "🐱"
+        case .bunny:   return "🐰"
+        case .turtle:  return "🐢"
+        case .bird:    return "🐦"
+        case .fish:    return "🐠"
+        case .ladybug: return "🐞"
         }
     }
 
-    /// A symbol guaranteed to exist on iOS 17, used when `symbolName` isn't available
-    /// on the running OS (e.g. `dog.fill`/`cat.fill` are newer). Resolved at runtime.
-    var fallbackSymbol: String {
+    /// The piece's signature colour — the tint of its symbol, or a ripe red for the
+    /// custom-drawn cherry. Used both for the placed glyph and for its win-explosion
+    /// confetti, so the burst always matches whatever piece the player chose.
+    var color: Color {
         switch self {
-        case .dog, .cat: return "pawprint.fill"
-        case .bird:      return "leaf.fill"
-        case .fish:      return "drop.fill"
-        case .ladybug:   return "ant.fill"
-        default:         return symbolName
+        case .cherry:  return Color(red: 0.86, green: 0.12, blue: 0.18)
+        case .star:    return Color(red: 0.98, green: 0.74, blue: 0.10)
+        case .queen:   return Color(red: 0.62, green: 0.22, blue: 0.78)
+        case .diamond: return Color(red: 0.90, green: 0.16, blue: 0.30)
+        case .heart:   return Color(red: 0.90, green: 0.16, blue: 0.30)
+        case .dog:     return Color(red: 0.60, green: 0.41, blue: 0.22)
+        case .cat:     return Color(red: 0.96, green: 0.52, blue: 0.12)
+        case .bunny:   return Color(red: 0.91, green: 0.45, blue: 0.62)
+        case .turtle:  return Color(red: 0.20, green: 0.62, blue: 0.34)
+        case .bird:    return Color(red: 0.20, green: 0.55, blue: 0.90)
+        case .fish:    return Color(red: 0.10, green: 0.62, blue: 0.66)
+        case .ladybug: return Color(red: 0.85, green: 0.13, blue: 0.16)
         }
     }
+
 }
 
 /// How the app picks its light/dark appearance.

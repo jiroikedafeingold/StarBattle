@@ -24,6 +24,49 @@ final class CelebrationHaptics {
         }
     }
 
+    /// A single crisp "pop" for one cherry bursting: a sharp transient with a short
+    /// soft rumble tail. `strength` (0…1) lets the caller build a crescendo across the
+    /// row of explosions. Safe to call rapidly and on any device.
+    func playPop(strength: Float = 1.0) {
+        guard supportsHaptics, let engine else { return }
+        // Floor the strength high so even the first pop lands with real force.
+        let s = max(0.6, min(strength, 1.0))
+        do {
+            try engine.start()
+            let events = [
+                // A sharp crack at full intensity…
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: s),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.9)
+                    ],
+                    relativeTime: 0),
+                // …layered over a deep, dull thud so the pop has real body…
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: s),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.1)
+                    ],
+                    relativeTime: 0),
+                // …trailing into a short, strong rumble.
+                CHHapticEvent(
+                    eventType: .hapticContinuous,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.6 * s),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.25)
+                    ],
+                    relativeTime: 0,
+                    duration: 0.16)
+            ]
+            let player = try engine.makePlayer(with: CHHapticPattern(events: events, parameters: []))
+            try player.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            // Decorative — ignore failures.
+        }
+    }
+
     /// Fires the celebration pattern once. Safe to call on any device; failures are
     /// swallowed because haptics are a non-essential flourish.
     func play() {
@@ -49,8 +92,8 @@ final class CelebrationHaptics {
         events.append(CHHapticEvent(
             eventType: .hapticContinuous,
             parameters: [
-                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.6),
-                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.9),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4)
             ],
             relativeTime: 0,
             duration: total))
@@ -70,7 +113,7 @@ final class CelebrationHaptics {
                 eventType: .hapticTransient,
                 parameters: [
                     CHHapticEventParameter(parameterID: .hapticIntensity,
-                                           value: Float.random(in: 0.25...0.9)),
+                                           value: Float.random(in: 0.55...1.0)),
                     CHHapticEventParameter(parameterID: .hapticSharpness,
                                            value: Float.random(in: 0.3...0.9))
                 ],
@@ -81,9 +124,9 @@ final class CelebrationHaptics {
         let intensityCurve = CHHapticParameterCurve(
             parameterID: .hapticIntensityControl,
             controlPoints: [
-                CHHapticParameterCurve.ControlPoint(relativeTime: 0, value: 0.2),
+                CHHapticParameterCurve.ControlPoint(relativeTime: 0, value: 0.35),
                 CHHapticParameterCurve.ControlPoint(relativeTime: 0.4, value: 1.0),
-                CHHapticParameterCurve.ControlPoint(relativeTime: 1.6, value: 0.7),
+                CHHapticParameterCurve.ControlPoint(relativeTime: 1.6, value: 0.85),
                 CHHapticParameterCurve.ControlPoint(relativeTime: total, value: 0.0)
             ],
             relativeTime: 0)

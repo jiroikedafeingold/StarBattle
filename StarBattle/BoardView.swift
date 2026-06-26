@@ -22,6 +22,9 @@ struct BoardView: View {
     var ghostCell: GridPosition? = nil
     /// Bumped when a new ghost appears, so its 15s fade restarts.
     var ghostPulse: Int = 0
+    /// Stars to leave undrawn — used by the win finale, where each cherry vanishes as
+    /// it bursts (the burst itself is drawn by an overlay above the board).
+    var hiddenStars: Set<GridPosition> = []
     let onTap: (Int, Int) -> Void
     let onDragBegin: () -> Void
     let onDragPaint: (GridPosition, GridPosition) -> Void
@@ -46,6 +49,7 @@ struct BoardView: View {
                             highlight: highlights[row][col],
                             regionColor: Color.regionColor(puzzle.regionId(row: row, col: col)),
                             isWrong: wrongStars.contains(GridPosition(row: row, col: col)),
+                            hideStar: hiddenStars.contains(GridPosition(row: row, col: col)),
                             pieceStyle: pieceStyle,
                             cellSize: cell
                         )
@@ -146,6 +150,8 @@ private struct CellView: View {
     let highlight: CellHighlight
     let regionColor: Color
     let isWrong: Bool
+    /// When true, a `.star` cell draws no piece (it's mid-burst in the win finale).
+    var hideStar: Bool = false
     let pieceStyle: PieceStyle
     let cellSize: CGFloat
 
@@ -163,7 +169,9 @@ private struct CellView: View {
             case .empty:
                 EmptyView()
             case .star:
-                PieceView(style: pieceStyle, isWrong: isWrong, size: cellSize * 0.80)
+                if !hideStar {
+                    PieceView(style: pieceStyle, isWrong: isWrong, size: cellSize * 0.80)
+                }
             case .dot:
                 Circle()
                     // Fixed dark grey so the dot reads on the light board in both

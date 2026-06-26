@@ -11,6 +11,22 @@ struct GameView: View {
     @State private var showEraseConfirm = false
     @State private var celebrationHaptics = CelebrationHaptics()
 
+    // MARK: Win finale
+    /// The solved cherries, in the order they detonate.
+    @State private var explosionStars: [GridPosition] = []
+    /// How many cherries have burst so far; drives the board's hidden stars and the
+    /// burst overlay.
+    @State private var explodedCount = 0
+    /// Set true once the explosions finish (or immediately if the win celebration is
+    /// off / the puzzle loaded already solved), revealing the "Play again" banner.
+    @State private var showBanner = false
+    /// The running explosion sequence, cancelled if the player starts a new puzzle.
+    @State private var finaleTask: Task<Void, Never>?
+
+    /// True for ~1s after the secret near-solve fires, so the tap that lands when the
+    /// finger lifts is swallowed rather than opening the hint dialog.
+    @State private var secretSolveFired = false
+
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
     }
@@ -69,11 +85,11 @@ struct GameView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppBackground().ignoresSafeArea())
         .overlay {
-            if model.isSolved {
+            if showBanner {
                 celebration
             }
         }
-        .animation(.spring(duration: 0.5), value: model.isSolved)
+        .animation(.spring(duration: 0.5), value: showBanner)
         .animation(.spring(duration: 0.35), value: model.isHighlightMode)
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
@@ -116,28 +132,36 @@ struct GameView: View {
         }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             guard haptics else { return nil }
-            return model.lastActionPlacedStar ? .impact(weight: .medium, intensity: 0.9)
-                                              : .impact(weight: .light, intensity: 0.6)
+            return model.lastActionPlacedStar ? .impact(weight: .heavy, intensity: 1.0)
+                                              : .impact(weight: .medium, intensity: 0.8)
         }
         .sensoryFeedback(trigger: model.isSolved) { wasSolved, isSolved in
             (haptics && isSolved && !wasSolved) ? .success : nil
         }
-        // A long, swelling "confetti brushing past you" burst when the puzzle is solved.
+        // On a fresh solve, detonate the cherries one by one, then show the banner.
         .onChange(of: model.celebrationPulse) { _, _ in
-            if haptics { celebrationHaptics.play() }
+            startWinFinale()
+        }
+        // Tearing down the win (new puzzle, clear) cancels the finale and hides the banner.
+        .onChange(of: model.isSolved) { _, solved in
+            if !solved { resetWinFinale() }
+        }
+        // A puzzle that loads already solved skips the explosions and shows the banner.
+        .onAppear {
+            if model.isSolved && !showBanner && finaleTask == nil { showBanner = true }
         }
         // A clear tap every time Check is pressed; a clean board also gets a success
         // chime. A wrong cherry adds the strong, longer buzz below.
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
             guard haptics else { return nil }
-            return model.lastCheckHadErrors ? .impact(weight: .medium, intensity: 0.9) : .success
+            return model.lastCheckHadErrors ? .impact(weight: .heavy, intensity: 1.0) : .success
         }
         // A strong, repeated buzz when Check reveals a wrong cherry.
         .sensoryFeedback(trigger: model.wrongPulse) { _, _ in
             haptics ? .impact(weight: .heavy, intensity: 1.0) : nil
         }
         .sensoryFeedback(trigger: model.hintPulse) { _, _ in
-            haptics ? .impact(weight: .medium) : nil
+            haptics ? .impact(weight: .heavy) : nil
         }
         .task {
             // A simple one-second timer that runs while a puzzle is in progress.
@@ -196,6 +220,7 @@ struct GameView: View {
                 hintCell: model.hintFocus,
                 ghostCell: model.guessGhost,
                 ghostPulse: model.ghostPulse,
+                hiddenStars: hiddenStars,
                 onTap: { row, col in model.tap(row: row, col: col) },
                 onDragBegin: { model.beginDrag() },
                 onDragPaint: { start, end in model.dragPaint(from: start, to: end) },
@@ -203,6 +228,13 @@ struct GameView: View {
             )
             .frame(width: side, height: side)
             .opacity(model.isGenerating ? 0.12 : 1)
+
+            // Each solved cherry bursts in turn, drawn exactly over its grid cell.
+            if winCelebration && model.isSolved {
+                CherryExplosionLayer(stars: explosionStars, explodedCount: explodedCount,
+                                     size: model.puzzle.size, side: side,
+                                     pieceStyle: pieceStyle)
+            }
 
             if model.isGenerating {
                 GeneratingView(stage: model.generationStage)
@@ -234,6 +266,69 @@ struct GameView: View {
     }
 
     // MARK: - Celebration
+
+    /// The cherries that have already burst — drawn as empty cells while the overlay
+    /// plays their explosion.
+    private var hiddenStars: Set<GridPosition> {
+        Set(explosionStars.prefix(explodedCount))
+    }
+
+    /// Bursts the solved cherries one at a time (top-to-bottom, left-to-right), each
+    /// with a crisp haptic pop that crescendos, then a final confetti sweep and the
+    /// "Play again" banner. If the win celebration is off, the banner shows at once.
+    private func startWinFinale() {
+        finaleTask?.cancel()
+        guard winCelebration else {
+            explosionStars = []
+            explodedCount = 0
+            showBanner = true
+            return
+        }
+        let order = model.starPositions.sorted { ($0.row, $0.col) < ($1.row, $1.col) }
+        explosionStars = order
+        explodedCount = 0
+        showBanner = false
+        finaleTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.35))
+            let count = order.count
+            for i in 0..<count {
+                if Task.isCancelled { return }
+                explodedCount = i + 1
+                if haptics {
+                    let ramp = count > 1 ? Double(i) / Double(count - 1) : 1
+                    celebrationHaptics.playPop(strength: Float(0.8 + 0.2 * ramp))
+                }
+                try? await Task.sleep(for: .seconds(0.12))
+            }
+            if Task.isCancelled { return }
+            if haptics { celebrationHaptics.play() }   // a swelling confetti sweep to finish
+            try? await Task.sleep(for: .seconds(0.35))
+            if Task.isCancelled { return }
+            showBanner = true
+        }
+    }
+
+    /// The hidden long-press payoff: fill in all but one cherry, give a solid buzz,
+    /// and arm the tap-swallowing flag (self-clearing in case the tap never lands).
+    private func secretNearSolve() {
+        guard model.canHint else { return }
+        model.revealAllButOne()
+        if haptics { celebrationHaptics.play() }
+        secretSolveFired = true
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            secretSolveFired = false
+        }
+    }
+
+    /// Cancels any running finale and clears its state (called when the win ends).
+    private func resetWinFinale() {
+        finaleTask?.cancel()
+        finaleTask = nil
+        explodedCount = 0
+        explosionStars = []
+        showBanner = false
+    }
 
     private var celebration: some View {
         ZStack {
@@ -274,7 +369,13 @@ struct GameView: View {
                     showNewConfirm = true
                 }
                 ToolButton(title: "Hint", systemImage: "lightbulb",
-                           isEnabled: model.canHint) { showHintConfirm = true }
+                           isEnabled: model.canHint,
+                           onLongPress: secretNearSolve) {
+                    // A long press just fired the secret near-solve; swallow the tap
+                    // that lands on release so the hint dialog doesn't also appear.
+                    if secretSolveFired { secretSolveFired = false; return }
+                    showHintConfirm = true
+                }
                 ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
                 ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
                            style: model.isHighlightMode ? .active : .normal) {
@@ -419,10 +520,17 @@ private struct ToolButton: View {
     var tint: Color = .accentColor
     var style: Style = .normal
     var isEnabled: Bool = true
+    /// An optional hidden action triggered by a long (15s) press. Used for the secret
+    /// near-solve on the Hint button; nil (and inert) for every other button.
+    var onLongPress: (() -> Void)? = nil
     let action: () -> Void
 
+    /// Times the secret hold: started when the finger lands and cancelled the instant
+    /// it lifts, so the action only fires after a full, uninterrupted 15s press.
+    @State private var holdTask: Task<Void, Never>?
+
     var body: some View {
-        Button(action: action) {
+        let button = Button(action: action) {
             VStack(spacing: 5) {
                 Image(systemName: systemImage)
                     .font(.system(size: 23, weight: .semibold))
@@ -438,6 +546,33 @@ private struct ToolButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+
+        // A LongPressGesture loses arbitration to the Button on a plain style, so the
+        // hold is timed manually: a zero-distance drag reports finger-down/up while the
+        // Button's own tap keeps working. Only attached when a secret action exists.
+        if let onLongPress, isEnabled {
+            button.simultaneousGesture(holdGesture(onLongPress))
+        } else {
+            button
+        }
+    }
+
+    private func holdGesture(_ perform: @escaping () -> Void) -> some Gesture {
+        DragGesture(minimumDistance: 0)
+            .onChanged { _ in
+                // Schedule once per press; the task is left in place (not nilled) after
+                // it fires so further onChanged ticks during the same hold can't re-arm it.
+                guard holdTask == nil else { return }
+                holdTask = Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(15))
+                    guard !Task.isCancelled else { return }
+                    perform()
+                }
+            }
+            .onEnded { _ in
+                holdTask?.cancel()
+                holdTask = nil
+            }
     }
 
     private var foreground: Color {

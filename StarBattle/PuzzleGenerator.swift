@@ -83,7 +83,8 @@ nonisolated enum PuzzleGenerator {
             onProgress?(attempt, .shaping)
             var built: [[Int]]?
             for _ in 0..<8 {
-                if let candidate = growRegions(solution: solution, size: size, rng: &rng) {
+                if let candidate = growRegions(solution: solution, size: size, rng: &rng,
+                                               preferSmallRegions: difficulty == .easy) {
                     built = candidate
                     break
                 }
@@ -219,7 +220,8 @@ nonisolated enum PuzzleGenerator {
     /// single connected shape, then the leftover cells are filled in. Returns nil if
     /// a connecting path can't be routed (caller retries with a fresh pairing).
     static func growRegions(solution: Set<GridPosition>, size: Int,
-                            rng: inout SystemRandomNumberGenerator) -> [[Int]]? {
+                            rng: inout SystemRandomNumberGenerator,
+                            preferSmallRegions: Bool = false) -> [[Int]]? {
         // Pair stars greedily by nearest neighbour so each region's two stars start
         // out close together.
         var remaining = Array(solution)
@@ -261,10 +263,41 @@ nonisolated enum PuzzleGenerator {
             }
         }
 
+        // Region sizes so far (just the carved connecting paths).
+        var sizeOf = [Int](repeating: 0, count: pairs.count)
         var unassigned = 0
         for r in 0..<size {
-            for c in 0..<size where region[r][c] == -1 { unassigned += 1 }
+            for c in 0..<size {
+                let id = region[r][c]
+                if id == -1 { unassigned += 1 } else { sizeOf[id] += 1 }
+            }
         }
+
+        // Easy boards aim for many small regions (3–6 cells): a region holding two
+        // stars in just a few cells is very constraining and usually solves by simple
+        // single-cell logic. Give the regions whose stars sit closest a small target
+        // size and let the rest soak up the remaining cells, then grow toward those
+        // targets — so the finished board is dominated by easy little regions.
+        var target = sizeOf
+        if preferSmallRegions, pairs.count > 1 {
+            let idsBySize = (0..<pairs.count).sorted { sizeOf[$0] < sizeOf[$1] }
+            let smallCount = max(1, Int(Double(pairs.count) * 0.6))
+            for (rank, id) in idsBySize.enumerated() where rank < smallCount {
+                target[id] = max(sizeOf[id], Int.random(in: 3...6, using: &rng))
+            }
+            let smallSum = idsBySize.prefix(smallCount).reduce(0) { $0 + target[$1] }
+            let largeIds = Array(idsBySize.dropFirst(smallCount))
+            if !largeIds.isEmpty {
+                let remaining = max(0, size * size - smallSum)
+                let base = remaining / largeIds.count
+                var extra = remaining - base * largeIds.count
+                for id in largeIds {
+                    target[id] = max(sizeOf[id], base + (extra > 0 ? 1 : 0))
+                    if extra > 0 { extra -= 1 }
+                }
+            }
+        }
+
         while unassigned > 0 {
             // Every unassigned cell that touches at least one assigned cell, paired
             // with the regions it could join.
@@ -283,9 +316,35 @@ nonisolated enum PuzzleGenerator {
                     }
                 }
             }
-            guard let (cell, options) = frontier.randomElement(using: &rng),
-                  let chosen = options.randomElement(using: &rng) else { break }
+            guard !frontier.isEmpty else { break }
+
+            let cell: GridPosition
+            let chosen: Int
+            if preferSmallRegions {
+                // Feed each cell to whichever adjacent region is furthest below its
+                // target, so the big regions fill first and the small ones stay small.
+                // Shuffling first randomises ties, avoiding directional growth.
+                frontier.shuffle(using: &rng)
+                var best: (cell: GridPosition, id: Int, deficit: Int)?
+                for (c, options) in frontier {
+                    for id in options {
+                        let deficit = target[id] - sizeOf[id]
+                        if best == nil || deficit > best!.deficit {
+                            best = (c, id, deficit)
+                        }
+                    }
+                }
+                guard let pick = best else { break }
+                cell = pick.cell
+                chosen = pick.id
+            } else {
+                guard let (c, options) = frontier.randomElement(using: &rng),
+                      let pickId = options.randomElement(using: &rng) else { break }
+                cell = c
+                chosen = pickId
+            }
             region[cell.row][cell.col] = chosen
+            sizeOf[chosen] += 1
             unassigned -= 1
         }
         return region

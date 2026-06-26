@@ -1,7 +1,4 @@
 import SwiftUI
-#if canImport(UIKit)
-import UIKit
-#endif
 
 /// The mark the player places on the board, drawn according to the chosen
 /// `PieceStyle`. The cherry is a custom Canvas drawing; the other styles are
@@ -17,52 +14,33 @@ struct PieceView: View {
         case .cherry:
             CherryView(isWrong: isWrong, size: size)
         default:
-            SymbolPiece(style: style, isWrong: isWrong, size: size)
+            EmojiPiece(style: style, isWrong: isWrong, size: size)
         }
     }
 }
 
-/// An SF-Symbol piece (star / queen / diamond / heart) with a soft glow and a
-/// drop shadow so it sits on the board like the cherry does.
-private struct SymbolPiece: View {
+/// A bright colour-emoji piece (star, heart, dog, ladybug…) with a soft drop shadow
+/// so it sits on the board with the same weight as the cherry. When flagged wrong by
+/// "Check" it's drained of colour and ringed in red, an unmistakable "this one's off".
+private struct EmojiPiece: View {
     let style: PieceStyle
     let isWrong: Bool
     let size: CGFloat
 
-    private var tint: Color {
-        if isWrong { return Color(red: 0.20, green: 0.42, blue: 0.92) }
-        switch style {
-        case .star:    return Color(red: 0.98, green: 0.74, blue: 0.10)
-        case .queen:   return Color(red: 0.62, green: 0.22, blue: 0.78)
-        case .diamond: return Color(red: 0.90, green: 0.16, blue: 0.30)
-        case .heart:   return Color(red: 0.90, green: 0.16, blue: 0.30)
-        case .cherry:  return .red
-        case .dog:     return Color(red: 0.60, green: 0.41, blue: 0.22)   // brown
-        case .cat:     return Color(red: 0.96, green: 0.52, blue: 0.12)   // ginger
-        case .bunny:   return Color(red: 0.91, green: 0.45, blue: 0.62)   // pink
-        case .turtle:  return Color(red: 0.20, green: 0.62, blue: 0.34)   // green
-        case .bird:    return Color(red: 0.20, green: 0.55, blue: 0.90)   // blue
-        case .fish:    return Color(red: 0.10, green: 0.62, blue: 0.66)   // teal
-        case .ladybug: return Color(red: 0.85, green: 0.13, blue: 0.16)   // red
-        }
-    }
-
-    /// `style.symbolName`, or its iOS-17 fallback when the symbol isn't on this OS.
-    private var resolvedSymbol: String {
-        #if canImport(UIKit)
-        if UIImage(systemName: style.symbolName) == nil { return style.fallbackSymbol }
-        #endif
-        return style.symbolName
-    }
-
     var body: some View {
-        Image(systemName: resolvedSymbol)
-            .resizable()
-            .aspectRatio(contentMode: .fit)
-            .foregroundStyle(tint)
-            .frame(width: size * 0.84, height: size * 0.84)
-            .shadow(color: tint.opacity(0.4), radius: size * 0.05)
-            .shadow(color: .black.opacity(0.18), radius: size * 0.03, x: 0, y: size * 0.02)
+        Text(style.emoji)
+            .font(.system(size: size * 0.74))
+            .saturation(isWrong ? 0 : 1)
+            .opacity(isWrong ? 0.75 : 1)
+            .shadow(color: .black.opacity(0.22), radius: size * 0.035, x: 0, y: size * 0.02)
+            .overlay {
+                if isWrong {
+                    Circle()
+                        .stroke(Color.red, lineWidth: max(1.5, size * 0.06))
+                        .frame(width: size * 0.94, height: size * 0.94)
+                }
+            }
+            .frame(width: size, height: size)
     }
 }
 
