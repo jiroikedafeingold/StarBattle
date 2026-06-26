@@ -50,7 +50,11 @@ struct OnboardingView: View {
     var body: some View {
         VStack(spacing: 0) {
             TabView(selection: $page) {
-                ForEach(Array(slides.enumerated()), id: \.element.id) { index, slide in
+                // Key on the stable page index, not slide.id: `slides` is recomputed on
+                // every render (it reads the current piece), so its UUIDs change each
+                // time. Keying on those churning ids made SwiftUI rebuild the pager
+                // mid-swipe, so a drag would move partway and then snap to the next page.
+                ForEach(Array(slides.enumerated()), id: \.offset) { index, slide in
                     slideView(slide).tag(index)
                 }
             }
