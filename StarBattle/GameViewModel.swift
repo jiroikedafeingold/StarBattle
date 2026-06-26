@@ -194,6 +194,11 @@ final class GameViewModel {
         let fresh: Puzzle
         if !prefetchReady.isEmpty {
             fresh = prefetchReady.removeFirst()
+        } else if let pooled = store.take(matching: difficulty, excluding: puzzle.regions) {
+            // Nothing prepared yet, but a previously-built board of this difficulty is
+            // sitting in the pool (e.g. from an earlier session or another level) — hand
+            // it back instantly rather than generating from scratch.
+            fresh = pooled
         } else {
             // Build on demand, streaming each phase to the overlay. The progress closure
             // runs on the generator's background thread; the stream hops it to the main
@@ -273,7 +278,9 @@ final class GameViewModel {
             prefetchInFlight += 1
             let task = Task.detached(priority: .background) { () -> Puzzle in
                 _ = await previous?.value
-                return PuzzleGenerator.buildPuzzle(difficulty: level)
+                var puzzle = PuzzleGenerator.buildPuzzle(difficulty: level)
+                puzzle.difficulty = level
+                return puzzle
             }
             prefetchTail = task
             Task { [weak self] in

@@ -29,7 +29,9 @@ nonisolated enum PuzzleGenerator {
                          difficulty: Difficulty = .easy,
                          onProgress: (@Sendable (Int, GenerationStage) -> Void)? = nil) async -> Puzzle {
         await Task.detached(priority: .userInitiated) {
-            buildPuzzle(size: size, stars: stars, difficulty: difficulty, onProgress: onProgress)
+            var puzzle = buildPuzzle(size: size, stars: stars, difficulty: difficulty, onProgress: onProgress)
+            puzzle.difficulty = difficulty
+            return puzzle
         }.value
     }
 

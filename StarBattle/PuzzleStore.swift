@@ -32,6 +32,19 @@ final class PuzzleStore {
         saved.randomElement() ?? Puzzle.starters.randomElement() ?? Puzzle.placeholder()
     }
 
+    /// Removes and returns a saved puzzle of the given difficulty (other than the one
+    /// currently on screen), or nil if the pool has none. Lets `newGame` hand back a
+    /// previously-built board of the right level instantly instead of generating on
+    /// demand — so switching difficulty, or a rapid run of New taps, stays snappy.
+    func take(matching difficulty: Difficulty, excluding currentRegions: [[Int]]) -> Puzzle? {
+        guard let idx = saved.firstIndex(where: {
+            $0.difficulty == difficulty && $0.regions != currentRegions
+        }) else { return nil }
+        let puzzle = saved.remove(at: idx)
+        persist()
+        return puzzle
+    }
+
     /// Adds a freshly generated puzzle (skipping duplicate layouts), trims the pool
     /// to `capacity`, and writes it to disk.
     func add(_ puzzle: Puzzle) {

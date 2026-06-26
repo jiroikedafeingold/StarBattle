@@ -41,6 +41,9 @@ nonisolated struct Puzzle: Codable {
     let regions: [[Int]]
     /// The cherry positions of the unique solution.
     let solution: Set<GridPosition>
+    /// The difficulty this board was generated for, used to reuse pooled boards at the
+    /// right level. Optional and decoded as nil for puzzles saved before it existed.
+    var difficulty: Difficulty? = nil
 
     func regionId(row: Int, col: Int) -> Int {
         regions[row][col]

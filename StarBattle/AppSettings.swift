@@ -31,7 +31,7 @@ enum SettingsKey {
 /// not the aggregate step count. Bands are defined in
 /// `PuzzleGenerator.band(forProfile:)`. `nonisolated` so the off-main generator
 /// can use it.
-nonisolated enum Difficulty: String, CaseIterable, Identifiable {
+nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
     case easy, medium, hard
 
     var id: String { rawValue }
