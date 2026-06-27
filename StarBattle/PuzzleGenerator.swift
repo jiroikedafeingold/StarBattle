@@ -46,7 +46,7 @@ nonisolated enum PuzzleGenerator {
     /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is
     /// very constraining and usually cracks open by single-cell logic, so guaranteeing
     /// several of them keeps Easy boards genuinely gentle.
-    static let easyMinSmallRegions = 5
+    static let easyMinSmallRegions = 6
     static let easySmallRegionMaxCells = 6
 
     /// Counts regions of `maxCells` cells or fewer in a layout.
@@ -101,9 +101,13 @@ nonisolated enum PuzzleGenerator {
             }
             onProgress?(attempt, .shaping)
             var built: [[Int]]?
+            // The small-region bias keeps the big 10×10 Easy board gentle. A 5×5 beginner
+            // board is already trivial, and biasing it just dumps the leftovers into one
+            // oversized region — so let beginner grow naturally balanced instead.
+            let preferSmall = difficulty == .easy
             for _ in 0..<8 {
-                if let candidate = growRegions(solution: solution, size: size, rng: &rng,
-                                               preferSmallRegions: difficulty == .easy) {
+                if let candidate = growRegions(solution: solution, size: size, stars: stars,
+                                               rng: &rng, preferSmallRegions: preferSmall) {
                     built = candidate
                     break
                 }
@@ -143,7 +147,12 @@ nonisolated enum PuzzleGenerator {
             // unique board is a valid fallback, so keep the first one we see.
             onProgress?(attempt, .tuning)
             let board = LogicBoard(regions: regions, size: size, stars: stars)
-            if difficulty == .easy {
+            if difficulty == .beginner {
+                // Beginner just needs to crack open by simple single-cell logic; the
+                // small 5×5 / one-star board is gentle by construction.
+                if board.tier1Solve() != nil { return puzzle }
+                fallback = fallback ?? puzzle
+            } else if difficulty == .easy {
                 // Require a board that both solves by simple single-cell logic AND has
                 // at least `easyMinSmallRegions` little regions. Keep the best near-miss
                 // (a tier-1 board) as a fallback for the rare run that never qualifies.
@@ -163,7 +172,8 @@ nonisolated enum PuzzleGenerator {
             }
         }
         return fallback ?? nonUniqueFallback
-            ?? Puzzle.starters.randomElement() ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
+            ?? Puzzle.starters(for: difficulty).randomElement()
+            ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
     }
 
     // MARK: - Random valid solution
@@ -247,43 +257,50 @@ nonisolated enum PuzzleGenerator {
     /// Each region's two stars are first joined by a carved path so the region is a
     /// single connected shape, then the leftover cells are filled in. Returns nil if
     /// a connecting path can't be routed (caller retries with a fresh pairing).
-    static func growRegions(solution: Set<GridPosition>, size: Int,
+    static func growRegions(solution: Set<GridPosition>, size: Int, stars: Int,
                             rng: inout SystemRandomNumberGenerator,
                             preferSmallRegions: Bool = false) -> [[Int]]? {
-        // Pair stars greedily by nearest neighbour so each region's two stars start
-        // out close together.
-        var remaining = Array(solution)
-        remaining.shuffle(using: &rng)
-        var pairs: [(GridPosition, GridPosition)] = []
-        while remaining.count >= 2 {
-            let a = remaining.removeLast()
-            var bestIdx = 0
-            var bestDist = Int.max
-            for (i, b) in remaining.enumerated() {
-                let d = abs(a.row - b.row) + abs(a.col - b.col)
-                if d < bestDist {
-                    bestDist = d
-                    bestIdx = i
+        // Group the solution's stars into one region per `stars` of them. With one star
+        // per region each star is its own seed; with two, pair them by nearest
+        // neighbour so a region's stars start out close together.
+        var groups: [[GridPosition]]
+        if stars <= 1 {
+            groups = solution.map { [$0] }
+            groups.shuffle(using: &rng)
+        } else {
+            var remaining = Array(solution)
+            remaining.shuffle(using: &rng)
+            var pairs: [[GridPosition]] = []
+            while remaining.count >= 2 {
+                let a = remaining.removeLast()
+                var bestIdx = 0
+                var bestDist = Int.max
+                for (i, b) in remaining.enumerated() {
+                    let d = abs(a.row - b.row) + abs(a.col - b.col)
+                    if d < bestDist {
+                        bestDist = d
+                        bestIdx = i
+                    }
                 }
+                let b = remaining.remove(at: bestIdx)
+                pairs.append([a, b])
             }
-            let b = remaining.remove(at: bestIdx)
-            pairs.append((a, b))
+            groups = pairs
         }
 
         var region = Array(repeating: Array(repeating: -1, count: size), count: size)
-        for (id, pair) in pairs.enumerated() {
-            region[pair.0.row][pair.0.col] = id
-            region[pair.1.row][pair.1.col] = id
+        for (id, group) in groups.enumerated() {
+            for cell in group { region[cell.row][cell.col] = id }
         }
 
-        // Connect each pair's two stars with a path through unclaimed cells so the
-        // region is connected from the outset. Process in random order; later
-        // regions route around the paths already carved.
-        var order = Array(0..<pairs.count)
+        // Connect each multi-star region's stars with a path through unclaimed cells so
+        // the region is connected from the outset. Single-star regions are already
+        // connected. Process in random order; later regions route around carved paths.
+        var order = Array(0..<groups.count)
         order.shuffle(using: &rng)
-        for id in order {
-            guard let path = connectingPath(region: region, from: pairs[id].0,
-                                            to: pairs[id].1, id: id, size: size) else {
+        for id in order where groups[id].count >= 2 {
+            guard let path = connectingPath(region: region, from: groups[id][0],
+                                            to: groups[id][1], id: id, size: size) else {
                 return nil
             }
             for cell in path {
@@ -292,7 +309,7 @@ nonisolated enum PuzzleGenerator {
         }
 
         // Region sizes so far (just the carved connecting paths).
-        var sizeOf = [Int](repeating: 0, count: pairs.count)
+        var sizeOf = [Int](repeating: 0, count: groups.count)
         var unassigned = 0
         for r in 0..<size {
             for c in 0..<size {
@@ -307,12 +324,12 @@ nonisolated enum PuzzleGenerator {
         // size and let the rest soak up the remaining cells, then grow toward those
         // targets — so the finished board is dominated by easy little regions.
         var target = sizeOf
-        if preferSmallRegions, pairs.count > 1 {
-            let idsBySize = (0..<pairs.count).sorted { sizeOf[$0] < sizeOf[$1] }
+        if preferSmallRegions, groups.count > 1 {
+            let idsBySize = (0..<groups.count).sorted { sizeOf[$0] < sizeOf[$1] }
             // Aim for more small regions than the minimum we require, so the few that
             // drift larger during refinement still leave enough simple regions behind.
-            let smallCount = min(pairs.count - 1,
-                                 max(easyMinSmallRegions + 2, Int(Double(pairs.count) * 0.7)))
+            let smallCount = min(groups.count - 1,
+                                 max(easyMinSmallRegions + 2, Int(Double(groups.count) * 0.7)))
             for (rank, id) in idsBySize.enumerated() where rank < smallCount {
                 target[id] = max(sizeOf[id], Int.random(in: 3...5, using: &rng))
             }

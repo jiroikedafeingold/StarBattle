@@ -5,19 +5,32 @@ import SwiftUI
 struct HelpView: View {
     @State private var showTutorial = false
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
     private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    /// One in Beginner, two otherwise — so the rules and tactics teach the right count.
+    private var stars: Int { (Difficulty(rawValue: difficultyRaw) ?? .easy).starsPerUnit }
 
     var body: some View {
         NavigationStack {
             List {
                 Section("How to play") {
-                    ruleRow("2️⃣",
-                            "Every row, column and coloured region holds exactly two \(piece.plural).") {
-                        inlineDiagram(RuleDiagrams.twoPerLine(piece: piece, cell: 26),
-                                      ok: true, label: "Two per line")
-                        inlineDiagram(RuleDiagrams.region(piece: piece, cell: 26),
-                                      label: "Two per region")
+                    if stars == 1 {
+                        ruleRow("1️⃣",
+                                "Every row, column and coloured region holds exactly one \(piece.noun).") {
+                            inlineDiagram(RuleDiagrams.onePerLine(piece: piece, cell: 26),
+                                          ok: true, label: "One per line")
+                            inlineDiagram(RuleDiagrams.oneRegion(piece: piece, cell: 26),
+                                          label: "One per region")
+                        }
+                    } else {
+                        ruleRow("2️⃣",
+                                "Every row, column and coloured region holds exactly two \(piece.plural).") {
+                            inlineDiagram(RuleDiagrams.twoPerLine(piece: piece, cell: 26),
+                                          ok: true, label: "Two per line")
+                            inlineDiagram(RuleDiagrams.region(piece: piece, cell: 26),
+                                          label: "Two per region")
+                        }
                     }
                     ruleRow("🚫",
                             "Two \(piece.plural) may never touch — not even diagonally.") {
@@ -41,9 +54,15 @@ struct HelpView: View {
                     tip("🎯",
                         "Start where it’s tight",
                         "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are a great first move.")
-                    tip("🔢",
-                        "Count the gaps",
-                        "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). If a line already has its two, every other square is empty.")
+                    if stars == 1 {
+                        tip("🔢",
+                            "Count the gaps",
+                            "If a line still needs its \(piece.noun) and has exactly one open square, that square must be the \(piece.noun). Once a line has its \(piece.noun), every other square is empty.")
+                    } else {
+                        tip("🔢",
+                            "Count the gaps",
+                            "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). If a line already has its two, every other square is empty.")
+                    }
                     tip("💡",
                         "Ask for a hint",
                         "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")

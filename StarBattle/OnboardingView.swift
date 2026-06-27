@@ -6,10 +6,14 @@ struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
     @State private var page = 0
 
     private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    /// The pieces-per-line for the current level — Beginner places one, the rest two,
+    /// so the rule slides teach the right count.
+    private var stars: Int { (Difficulty(rawValue: difficultyRaw) ?? .easy).starsPerUnit }
 
     /// What a slide shows above its text.
     private enum Art {
@@ -17,6 +21,7 @@ struct OnboardingView: View {
         case emoji(String)
         case neverTouch
         case twoPerLine
+        case onePerLine
         case pieceShowcase
     }
 
@@ -33,9 +38,13 @@ struct OnboardingView: View {
             Slide(art: .piece, tint: .red,
                   title: "Welcome to Cherry Battle",
                   body: "A bite-size logic puzzle. Fill the board with \(piece.plural) using pure deduction — no luck required."),
-            Slide(art: .twoPerLine, tint: .orange,
-                  title: "Two per line",
-                  body: "Every row, every column, and every coloured region holds exactly two \(piece.plural)."),
+            stars == 1
+                ? Slide(art: .onePerLine, tint: .orange,
+                        title: "One per line",
+                        body: "Every row, every column, and every coloured region holds exactly one \(piece.noun).")
+                : Slide(art: .twoPerLine, tint: .orange,
+                        title: "Two per line",
+                        body: "Every row, every column, and every coloured region holds exactly two \(piece.plural)."),
             Slide(art: .neverTouch, tint: .pink,
                   title: "Never touching",
                   body: "Two \(piece.plural) can never touch — not horizontally, vertically, or even diagonally. Each one rules out all eight neighbours."),
@@ -108,6 +117,8 @@ struct OnboardingView: View {
             RuleDiagrams.neverTouch(piece: piece, cell: 46)
         case .twoPerLine:
             RuleDiagrams.twoPerLine(piece: piece, cell: 46)
+        case .onePerLine:
+            RuleDiagrams.onePerLine(piece: piece, cell: 46)
         case .pieceShowcase:
             HStack(spacing: 16) {
                 ForEach([PieceStyle.unicorn, .robot, .poop, .alien], id: \.self) { style in

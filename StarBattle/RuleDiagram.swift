@@ -95,6 +95,19 @@ enum RuleDiagrams {
         MiniBoard(grid: [[x, d, e, x, d]], piece: piece, cell: cell)
     }
 
+    /// A single cherry in a line — the Beginner rule (one per row/column).
+    static func onePerLine(piece: PieceStyle = .cherry, cell: CGFloat = 34) -> MiniBoard {
+        MiniBoard(grid: [[d, x, d, d]], piece: piece, cell: cell)
+    }
+
+    /// A coloured region holding its single (Beginner) cherry.
+    static func oneRegion(piece: PieceStyle = .cherry, cell: CGFloat = 34) -> MiniBoard {
+        MiniBoard(grid: [[e, e, e], [e, x, e], [e, e, e]],
+                  piece: piece,
+                  tintMask: Array(repeating: Array(repeating: true, count: 3), count: 3),
+                  cell: cell)
+    }
+
     /// Two cherries touching at a corner — illegal.
     static func touchBad(piece: PieceStyle = .cherry, cell: CGFloat = 34) -> MiniBoard {
         MiniBoard(grid: [[x, e, e], [e, x, e], [e, e, e]], piece: piece, cell: cell)

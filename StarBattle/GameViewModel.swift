@@ -147,7 +147,7 @@ final class GameViewModel {
             isHighlightMode = saved.isHighlightMode
             isSolved = saved.isSolved
         } else {
-            let launch = store.launchPuzzle()
+            let launch = store.launchPuzzle(for: storedDifficulty)
             puzzle = launch
             marks = Self.emptyMarks(size: launch.size)
             highlights = Self.emptyHighlights(size: launch.size)
@@ -213,7 +213,9 @@ final class GameViewModel {
                     self?.generationStage = stage
                 }
             }
-            fresh = await PuzzleGenerator.generate(difficulty: difficulty) { attempt, stage in
+            fresh = await PuzzleGenerator.generate(size: difficulty.boardSize,
+                                                   stars: difficulty.starsPerUnit,
+                                                   difficulty: difficulty) { attempt, stage in
                 continuation.yield((attempt, stage))
             }
             continuation.finish()
@@ -278,7 +280,9 @@ final class GameViewModel {
             prefetchInFlight += 1
             let task = Task.detached(priority: .background) { () -> Puzzle in
                 _ = await previous?.value
-                var puzzle = PuzzleGenerator.buildPuzzle(difficulty: level)
+                var puzzle = PuzzleGenerator.buildPuzzle(size: level.boardSize,
+                                                         stars: level.starsPerUnit,
+                                                         difficulty: level)
                 puzzle.difficulty = level
                 return puzzle
             }

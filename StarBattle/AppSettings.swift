@@ -32,17 +32,36 @@ enum SettingsKey {
 /// `PuzzleGenerator.band(forProfile:)`. `nonisolated` so the off-main generator
 /// can use it.
 nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
-    case easy, medium, hard
+    case beginner, easy, medium, hard
 
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
+    /// A compact label so all four levels fit the segmented picker on small phones.
+    var shortLabel: String {
+        switch self {
+        case .beginner: return "Begin"
+        case .easy:     return "Easy"
+        case .medium:   return "Med"
+        case .hard:     return "Hard"
+        }
+    }
+
+    /// The board's side length (cells per row/column) for this level. Beginner uses a
+    /// gentler 5×5 grid; everything else is the standard 10×10.
+    var boardSize: Int { self == .beginner ? 5 : 10 }
+
+    /// How many pieces go in every row, column and region. Beginner places just one;
+    /// the other levels place two.
+    var starsPerUnit: Int { self == .beginner ? 1 : 2 }
+
     /// The next harder level, if any (used by the "step up" prompt).
     var harder: Difficulty? {
         switch self {
-        case .easy: return .medium
-        case .medium: return .hard
-        case .hard: return nil
+        case .beginner: return .easy
+        case .easy:     return .medium
+        case .medium:   return .hard
+        case .hard:     return nil
         }
     }
 }

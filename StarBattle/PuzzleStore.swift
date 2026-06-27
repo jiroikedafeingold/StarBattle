@@ -26,10 +26,14 @@ final class PuzzleStore {
         }
     }
 
-    /// A puzzle to show at launch: a previously saved one if any exist, otherwise a
-    /// built-in starter.
-    func launchPuzzle() -> Puzzle {
-        saved.randomElement() ?? Puzzle.starters.randomElement() ?? Puzzle.placeholder()
+    /// A puzzle to show at launch for the given difficulty: a previously saved board of
+    /// that level if one exists, otherwise a built-in starter (or a placeholder).
+    func launchPuzzle(for difficulty: Difficulty) -> Puzzle {
+        if let pooled = saved.filter({ $0.difficulty == difficulty }).randomElement() {
+            return pooled
+        }
+        return Puzzle.starters(for: difficulty).randomElement()
+            ?? Puzzle.placeholder(size: difficulty.boardSize, starsPerUnit: difficulty.starsPerUnit)
     }
 
     /// Removes and returns a saved puzzle of the given difficulty (other than the one

@@ -179,10 +179,16 @@ struct GameView: View {
     private var header: some View {
         VStack(spacing: 4) {
             GameTitle()
-            Text("Place 2 \(pieceStyle.plural) in every row, column and region")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+            Group {
+                if model.puzzle.starsPerUnit == 1 {
+                    Text("Place 1 \(pieceStyle.noun) in every row, column and region")
+                } else {
+                    Text("Place 2 \(pieceStyle.plural) in every row, column and region")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
             if !hideTimer {
                 Label(timeString, systemImage: "clock")
                     .font(.headline.monospacedDigit())
@@ -196,11 +202,11 @@ struct GameView: View {
     private var difficultyPicker: some View {
         Picker("Difficulty", selection: $difficultyRaw) {
             ForEach(Difficulty.allCases) { level in
-                Text(level.label).tag(level.rawValue)
+                Text(level.shortLabel).tag(level.rawValue)
             }
         }
         .pickerStyle(.segmented)
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 360)
         .disabled(model.isGenerating || model.isRealizing)
         .onChange(of: difficultyRaw) { _, newValue in
             model.setDifficulty(Difficulty(rawValue: newValue) ?? .easy)

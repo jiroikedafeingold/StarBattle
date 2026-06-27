@@ -80,12 +80,32 @@ extension Puzzle {
         ],
     ]
 
-    /// The parsed starter puzzles, built once on first use.
-    nonisolated static let starters: [Puzzle] = starterLayouts.compactMap { Puzzle(regionRows: $0) }
+    /// Hand-harvested, verified-unique 5×5 / 1-star boards for the Beginner level, so a
+    /// beginner board shows instantly at launch instead of a placeholder.
+    private nonisolated static let beginnerLayouts: [[String]] = [
+        ["00113", "00013", "04013", "24413", "24333"],
+        ["00444", "00433", "00413", "02211", "02221"],
+        ["00041", "20041", "20044", "22344", "22344"],
+        ["20000", "40033", "44033", "44413", "44113"],
+        ["33111", "00111", "00021", "00222", "22224"],
+        ["22244", "32222", "33021", "03011", "00011"],
+    ]
+
+    /// The parsed standard (10×10 / 2-star) starter puzzles, built once on first use.
+    nonisolated static let starters: [Puzzle] = starterLayouts.compactMap { Puzzle(regionRows: $0, stars: 2) }
+
+    /// The parsed Beginner (5×5 / 1-star) starter puzzles.
+    nonisolated static let beginnerStarters: [Puzzle] = beginnerLayouts.compactMap { Puzzle(regionRows: $0, stars: 1) }
+
+    /// The starter set appropriate for a difficulty: 5×5 / 1-star for Beginner, the
+    /// standard 10×10 / 2-star boards otherwise.
+    nonisolated static func starters(for difficulty: Difficulty) -> [Puzzle] {
+        difficulty == .beginner ? beginnerStarters : starters
+    }
 
     /// Builds a puzzle from `n` rows of `n` single-digit region ids, deriving the
     /// unique solution with the solver. Returns nil if the layout is malformed.
-    nonisolated init?(regionRows: [String]) {
+    nonisolated init?(regionRows: [String], stars: Int = 2) {
         let size = regionRows.count
         var regions: [[Int]] = []
         for row in regionRows {
@@ -94,7 +114,7 @@ extension Puzzle {
             guard ids.count == size else { return nil }
             regions.append(ids)
         }
-        let solutions = PuzzleGenerator.findSolutions(regions: regions, size: size, stars: 2, limit: 1)
-        self.init(size: size, starsPerUnit: 2, regions: regions, solution: solutions.first ?? [])
+        let solutions = PuzzleGenerator.findSolutions(regions: regions, size: size, stars: stars, limit: 1)
+        self.init(size: size, starsPerUnit: stars, regions: regions, solution: solutions.first ?? [])
     }
 }
