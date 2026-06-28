@@ -103,16 +103,20 @@ final class GameViewModel {
     /// On-disk pool of previously generated puzzles, for launch-screen variety.
     private let store = PuzzleStore()
 
-    /// Puzzles generated ahead of time so "New Puzzle" is instant even on rapid taps.
-    /// Boards land here only once fully built; `newGame` takes one if available, else
-    /// it generates on demand (showing progress). Kept topped up to `prefetchDepth`.
-    private var prefetchReady: [Puzzle] = []
-    private var prefetchInFlight = 0
-    private let prefetchDepth = 3
+    /// Freshly-generated puzzles kept ready *per difficulty*, so tapping New — or
+    /// switching levels — hands back a brand-new board instantly instead of waiting on
+    /// the (sometimes slow, e.g. Hard) generator. The current level is kept deeply
+    /// stocked; the others keep one ready so the first switch is instant too. Each board
+    /// is used only once, so the player never replays a board.
+    private var prefetchReady: [Difficulty: [Puzzle]] = [:]
+    private var prefetchInFlight: [Difficulty: Int] = [:]
+    /// How many ready boards to keep for a level: a deep buffer for the one being played
+    /// (covers rapid New taps), one each for the rest (instant first switch).
+    private func prefetchTarget(_ level: Difficulty) -> Int { level == difficulty ? 4 : 1 }
     /// The most recently scheduled generation. Each new build waits on it before
     /// starting, so the (CPU-heavy) builds run one-at-a-time instead of all at once
-    /// — two concurrent builds used to starve the main thread and make the board
-    /// feel unresponsive right after launch.
+    /// — concurrent builds used to starve the main thread and make the board feel
+    /// unresponsive right after launch.
     private var prefetchTail: Task<Puzzle, Never>?
 
     /// True inside SwiftUI previews — used to skip background work and persistence.
@@ -192,13 +196,8 @@ final class GameViewModel {
         // even when a prefetched puzzle is ready instantly.
         let start = ContinuousClock.now
         let fresh: Puzzle
-        if !prefetchReady.isEmpty {
-            fresh = prefetchReady.removeFirst()
-        } else if let pooled = store.take(matching: difficulty, excluding: puzzle.regions) {
-            // Nothing prepared yet, but a previously-built board of this difficulty is
-            // sitting in the pool (e.g. from an earlier session or another level) — hand
-            // it back instantly rather than generating from scratch.
-            fresh = pooled
+        if !(prefetchReady[difficulty]?.isEmpty ?? true) {
+            fresh = prefetchReady[difficulty]!.removeFirst()
         } else {
             // Build on demand, streaming each phase to the overlay. The progress closure
             // runs on the generator's background thread; the stream hops it to the main
@@ -261,42 +260,49 @@ final class GameViewModel {
         guard new != difficulty else { return }
         difficulty = new
         UserDefaults.standard.set(new.rawValue, forKey: SettingsKey.difficulty)
-        // Drop boards prepared for the old level. Any still-in-flight builds finish but
-        // are discarded on completion (their level no longer matches).
-        prefetchReady.removeAll()
-        prefetchTail = nil
+        // Keep every level's ready boards — switching just changes which queue we pull
+        // from. `newGame` takes a waiting board for the new level (instant when one is
+        // ready), then `topUpPrefetch` re-stocks around the new current level.
         Task { await newGame() }
     }
 
-    /// Keeps the background generation queue filled to `prefetchDepth`. The tasks
-    /// run concurrently off the main actor, so several puzzles prepare in parallel.
-    /// Each finished puzzle is also saved to the on-disk pool for launch variety.
+    /// Keeps each difficulty's queue topped to its target, current level first, building
+    /// one board at a time off the main actor so generation never starves the UI. Every
+    /// finished board is also saved to the on-disk pool for launch-screen variety.
     private func topUpPrefetch() {
-        while prefetchReady.count + prefetchInFlight < prefetchDepth {
-            // Chain each build onto the previous one so they run sequentially at low
-            // priority rather than competing for the CPU all at once.
-            let previous = prefetchTail
-            let level = difficulty
-            prefetchInFlight += 1
-            let task = Task.detached(priority: .background) { () -> Puzzle in
-                _ = await previous?.value
-                var puzzle = PuzzleGenerator.buildPuzzle(size: level.boardSize,
-                                                         stars: level.starsPerUnit,
-                                                         difficulty: level)
-                puzzle.difficulty = level
-                return puzzle
+        // Current level first, then the rest, so the level being played fills soonest.
+        let order = [difficulty] + Difficulty.allCases.filter { $0 != difficulty }
+        for level in order {
+            let have = (prefetchReady[level]?.count ?? 0) + (prefetchInFlight[level] ?? 0)
+            // A level can hold more than its target (e.g. the level we just switched away
+            // from), so guard against a reversed range.
+            for _ in 0..<max(0, prefetchTarget(level) - have) {
+                scheduleBuild(level)
             }
-            prefetchTail = task
-            Task { [weak self] in
-                let puzzle = await task.value
-                guard let self else { return }
-                self.store.add(puzzle)            // pooled for launch variety
-                self.prefetchInFlight -= 1
-                // Only keep it ready if it still matches the current level (the player
-                // may have switched difficulty while it was building).
-                if level == self.difficulty { self.prefetchReady.append(puzzle) }
-                self.topUpPrefetch()
-            }
+        }
+    }
+
+    /// Schedules one background build for `level`, chained after the previous build so
+    /// only a single (CPU-heavy) generation runs at a time.
+    private func scheduleBuild(_ level: Difficulty) {
+        let previous = prefetchTail
+        prefetchInFlight[level, default: 0] += 1
+        let task = Task.detached(priority: .background) { () -> Puzzle in
+            _ = await previous?.value
+            var puzzle = PuzzleGenerator.buildPuzzle(size: level.boardSize,
+                                                     stars: level.starsPerUnit,
+                                                     difficulty: level)
+            puzzle.difficulty = level
+            return puzzle
+        }
+        prefetchTail = task
+        Task { [weak self] in
+            let puzzle = await task.value
+            guard let self else { return }
+            self.store.add(puzzle)            // pooled for launch variety
+            self.prefetchInFlight[level, default: 1] -= 1
+            self.prefetchReady[level, default: []].append(puzzle)
+            self.topUpPrefetch()
         }
     }
 

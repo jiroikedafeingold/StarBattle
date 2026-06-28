@@ -131,7 +131,7 @@ enum HintEngine {
                     if state[r * n + c] != 1 {
                         return Hint(outcome: .place, position: GridPosition(row: r, col: c),
                                     placesStar: true,
-                                    message: "No move is forced by pure logic from here — so here's a \(item) from the solution to get you going.")
+                                    message: "No move is forced by pure logic from here — so here's \(itemArticle) \(item) from the solution to get you going.")
                     }
                 }
             }
@@ -140,6 +140,13 @@ enum HintEngine {
         }
 
         private struct Step { let cell: Int; let star: Bool; let reason: String }
+
+        /// "a"/"an" for the piece noun (e.g. "an alien"), and a sentence-start variant.
+        private var itemArticle: String {
+            let vowels: Set<Character> = ["a", "e", "i", "o"]
+            return vowels.contains(item.lowercased().first ?? " ") ? "an" : "a"
+        }
+        private var itemArticleCap: String { itemArticle.capitalized }
 
         /// Finds one new determination using sound techniques, in order of how
         /// satisfying/clear the resulting hint is.
@@ -150,7 +157,7 @@ enum HintEngine {
                 let needed = quota - stars
                 if needed > 0 && open.count == needed, let cell = open.first {
                     return Step(cell: cell, star: true,
-                                reason: "\(unitName(idx)) still needs \(needed) \(needed == 1 ? item : items) and has exactly that many open squares left — so this square must be a \(item).")
+                                reason: "\(unitName(idx)) still needs \(needed) \(needed == 1 ? item : items) and has exactly that many open squares left — so this square must be \(itemArticle) \(item).")
                 }
             }
             // 2. Contradiction → cherry: leaving this square empty would break a unit.
@@ -158,7 +165,7 @@ enum HintEngine {
                 if contradicts(setting: i, to: 2) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: true,
-                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be a \(item) — leaving it empty would make a row, column or region impossible to complete.")
+                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be \(itemArticle) \(item) — leaving it empty would make a row, column or region impossible to complete.")
                 }
             }
             // 3. Unit already satisfied → empty.
@@ -187,7 +194,7 @@ enum HintEngine {
                 if contradicts(setting: i, to: 1) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: false,
-                                reason: "A \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
+                                reason: "\(itemArticleCap) \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
                 }
             }
             // 6. Deep (nested) contradiction → cherry: leaving it empty leads, after a
@@ -196,7 +203,7 @@ enum HintEngine {
                 if contradictsDeep(setting: i, to: 2) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: true,
-                                reason: "This one needs a deeper look: marking row \(pos.row + 1), column \(pos.col + 1) empty forces a contradiction a few steps on — so it must be a \(item).")
+                                reason: "This one needs a deeper look: marking row \(pos.row + 1), column \(pos.col + 1) empty forces a contradiction a few steps on — so it must be \(itemArticle) \(item).")
                 }
             }
             // 7. Deep (nested) contradiction → empty.
@@ -204,7 +211,7 @@ enum HintEngine {
                 if contradictsDeep(setting: i, to: 1) {
                     let pos = GridPosition(row: i / n, col: i % n)
                     return Step(cell: i, star: false,
-                                reason: "This one needs a deeper look: a \(item) at row \(pos.row + 1), column \(pos.col + 1) forces a contradiction a few steps on — so it must be empty.")
+                                reason: "This one needs a deeper look: \(itemArticle) \(item) at row \(pos.row + 1), column \(pos.col + 1) forces a contradiction a few steps on — so it must be empty.")
                 }
             }
             return nil

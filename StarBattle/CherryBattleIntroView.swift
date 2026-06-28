@@ -132,7 +132,7 @@ struct CherryBattleIntroView: View {
              + Text("Battle").foregroundColor(Color(hex: 0xE51937)))
                 .font(.system(size: 44, weight: .bold, design: .rounded))
 
-            Text("THE TWO-NOT-TOUCH PUZZLE")
+            Text("THE FUN LOGIC PUZZLE")
                 .font(.system(size: 11.5, weight: .medium))
                 .tracking(3)
                 .foregroundColor(Color(hex: 0xFFF3F4, alpha: 0.5))

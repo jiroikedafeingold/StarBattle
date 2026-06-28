@@ -6,22 +6,17 @@ struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
     @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
-    @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
     @State private var page = 0
 
     private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
-    /// The pieces-per-line for the current level — Beginner places one, the rest two,
-    /// so the rule slides teach the right count.
-    private var stars: Int { (Difficulty(rawValue: difficultyRaw) ?? .easy).starsPerUnit }
 
     /// What a slide shows above its text.
     private enum Art {
         case piece
         case emoji(String)
         case neverTouch
-        case twoPerLine
-        case onePerLine
+        case perLineBoth
         case pieceShowcase
     }
 
@@ -38,19 +33,15 @@ struct OnboardingView: View {
             Slide(art: .piece, tint: .red,
                   title: "Welcome to Cherry Battle",
                   body: "A bite-size logic puzzle. Fill the board with \(piece.plural) using pure deduction — no luck required."),
-            stars == 1
-                ? Slide(art: .onePerLine, tint: .orange,
-                        title: "One per line",
-                        body: "Every row, every column, and every coloured region holds exactly one \(piece.noun).")
-                : Slide(art: .twoPerLine, tint: .orange,
-                        title: "Two per line",
-                        body: "Every row, every column, and every coloured region holds exactly two \(piece.plural)."),
+            Slide(art: .perLineBoth, tint: .orange,
+                  title: "Two per line — or one",
+                  body: "Every row, column and region holds exactly two \(piece.plural) — or just one \(piece.noun) in Beginner mode."),
             Slide(art: .neverTouch, tint: .pink,
                   title: "Never touching",
                   body: "Two \(piece.plural) can never touch — not horizontally, vertically, or even diagonally. Each one rules out all eight neighbours."),
             Slide(art: .emoji("👆"), tint: .purple,
                   title: "Mark as you go",
-                  body: "Tap a square to cycle it: empty → a dot (your “no \(piece.noun) here” note) → a \(piece.noun) → empty. Drag to lay a quick line of dots."),
+                  body: "Tap a square to cycle it: empty → a dot (your “no \(piece.noun) here” note) → \(piece.article) \(piece.noun) → empty. Drag to lay a quick line of dots."),
             Slide(art: .emoji("💡"), tint: .green,
                   title: "Helpers when you need them",
                   body: "Stuck? Tap Hint for the next logical step, explained. Use Mark mode to pencil in a guess and tap “Do it” to commit, and Undo or Redo anytime."),
@@ -115,10 +106,14 @@ struct OnboardingView: View {
                 .font(.system(size: 96))
         case .neverTouch:
             RuleDiagrams.neverTouch(piece: piece, cell: 46)
-        case .twoPerLine:
-            RuleDiagrams.twoPerLine(piece: piece, cell: 46)
-        case .onePerLine:
-            RuleDiagrams.onePerLine(piece: piece, cell: 46)
+        case .perLineBoth:
+            VStack(spacing: 10) {
+                RuleDiagrams.twoPerLine(piece: piece, cell: 38)
+                Text("or")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(.secondary)
+                RuleDiagrams.onePerLine(piece: piece, cell: 38)
+            }
         case .pieceShowcase:
             HStack(spacing: 16) {
                 ForEach([PieceStyle.unicorn, .robot, .poop, .alien], id: \.self) { style in

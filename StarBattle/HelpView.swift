@@ -40,7 +40,7 @@ struct HelpView: View {
                                       ok: false, label: "Not even diagonally")
                     }
                     rule("👆",
-                         "Tap a square to cycle it: empty → a dot → a \(piece.noun) → empty.")
+                         "Tap a square to cycle it: empty → a dot → \(piece.article) \(piece.noun) → empty.")
                     rule("✏️",
                          "Drag across a row or column to lay a line of dots quickly.")
                     rule("🏆",
@@ -50,7 +50,7 @@ struct HelpView: View {
                 Section("Tips & tactics") {
                     tip("📝",
                         "Mark, don't guess",
-                        "Put a dot in every square you’ve ruled out. Placing a \(piece.noun) dots its eight neighbours for you automatically.")
+                        "Put a dot in every square you’ve ruled out. Placing \(piece.article) \(piece.noun) dots its eight neighbours for you automatically.")
                     tip("🎯",
                         "Start where it’s tight",
                         "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are a great first move.")
@@ -76,11 +76,11 @@ struct HelpView: View {
                         markParagraph("🖍️",
                             "Mark mode is for trying out a path. Tap the **Mark** button and the board turns into a scratch pad: tap a square once for a guess-dot, again for a guess-\(piece.noun) — exactly like the real board, but nothing is committed yet.")
                         markParagraph("🧭",
-                            "Pick a square you’re unsure about and guess a \(piece.noun) there. Then follow the consequences — place the dots and \(piece.plural) that guess forces. If it all holds together, tap **Do it** to make the guesses real.")
+                            "Pick a square you’re unsure about and guess \(piece.article) \(piece.noun) there. Then follow the consequences — place the dots and \(piece.plural) that guess forces. If it all holds together, tap **Do it** to make the guesses real.")
                         markParagraph("❌",
                             "If the path leads to a contradiction, then your first guess was wrong — so that square is actually a **dot**. Either way you’ve learned something, and often you can read off several more squares from there.")
                         markParagraph("📍",
-                            "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you should know whether it’s a \(piece.noun) or a dot, so mark it for real.")
+                            "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you should know whether it’s \(piece.article) \(piece.noun) or a dot, so mark it for real.")
                     }
                     .padding(.vertical, 2)
                 }

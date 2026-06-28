@@ -27,6 +27,13 @@ struct GameView: View {
     /// finger lifts is swallowed rather than opening the hint dialog.
     @State private var secretSolveFired = false
 
+    /// A brief rule reminder shown when switching into or out of Beginner, where the
+    /// pieces-per-line count changes. Auto-dismisses after a couple of seconds.
+    @State private var ruleToast: LocalizedStringKey?
+    @State private var ruleToastTask: Task<Void, Never>?
+    /// Bumped to give the Exit-Mark-Mode button a press haptic.
+    @State private var exitPressTick = 0
+
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
     }
@@ -87,6 +94,20 @@ struct GameView: View {
         .overlay {
             if showBanner {
                 celebration
+            }
+        }
+        .overlay(alignment: .top) {
+            if let ruleToast {
+                Text(ruleToast)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 10)
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.white.opacity(0.12)))
+                    .shadow(radius: 10, y: 4)
+                    .padding(.top, isPadLayout ? 56 : 6)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .allowsHitTesting(false)
             }
         }
         .animation(.spring(duration: 0.5), value: showBanner)
@@ -208,8 +229,15 @@ struct GameView: View {
         .pickerStyle(.segmented)
         .frame(maxWidth: 360)
         .disabled(model.isGenerating || model.isRealizing)
-        .onChange(of: difficultyRaw) { _, newValue in
-            model.setDifficulty(Difficulty(rawValue: newValue) ?? .easy)
+        .onChange(of: difficultyRaw) { oldValue, newValue in
+            let old = Difficulty(rawValue: oldValue) ?? .easy
+            let new = Difficulty(rawValue: newValue) ?? .easy
+            model.setDifficulty(new)
+            // Remind the player of the rule only when the piece-per-line count actually
+            // changes (i.e. crossing into or out of Beginner).
+            if old.starsPerUnit != new.starsPerUnit {
+                showRuleToast(stars: new.starsPerUnit)
+            }
         }
     }
 
@@ -329,6 +357,19 @@ struct GameView: View {
         }
     }
 
+    /// Flashes a small "N {piece} per row, column and region" reminder, auto-dismissing.
+    private func showRuleToast(stars: Int) {
+        let toast: LocalizedStringKey = stars == 1
+            ? "1 \(pieceStyle.noun) per row, column and region"
+            : "2 \(pieceStyle.plural) per row, column and region"
+        withAnimation(.spring(duration: 0.3)) { ruleToast = toast }
+        ruleToastTask?.cancel()
+        ruleToastTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.2))
+            withAnimation(.easeOut(duration: 0.3)) { ruleToast = nil }
+        }
+    }
+
     /// Cancels any running finale and clears its state (called when the win ends).
     private func resetWinFinale() {
         finaleTask?.cancel()
@@ -404,6 +445,7 @@ struct GameView: View {
     /// Shown in place of the full bar while in Mark mode — the only way out.
     private var exitMarkButton: some View {
         Button {
+            exitPressTick &+= 1
             model.toggleHighlightMode()
         } label: {
             Label("Exit Mark Mode", systemImage: "highlighter")
@@ -414,6 +456,9 @@ struct GameView: View {
         .buttonStyle(.borderedProminent)
         .tint(.purple)
         .disabled(model.isGenerating || model.isRealizing)
+        .sensoryFeedback(trigger: exitPressTick) { _, _ in
+            haptics ? .impact(weight: .light, intensity: 0.7) : nil
+        }
     }
 
     // MARK: - Mark-mode controls
@@ -537,8 +582,15 @@ private struct ToolButton: View {
     /// it lifts, so the action only fires after a full, uninterrupted 10s press.
     @State private var holdTask: Task<Void, Never>?
 
+    @AppStorage(SettingsKey.haptics) private var haptics = true
+    /// Bumped on every tap so the button gives a light "pressed" haptic.
+    @State private var pressTick = 0
+
     var body: some View {
-        let button = Button(action: action) {
+        let button = Button {
+            pressTick &+= 1
+            action()
+        } label: {
             VStack(spacing: 5) {
                 Image(systemName: systemImage)
                     .font(.system(size: 23, weight: .semibold))
@@ -554,6 +606,10 @@ private struct ToolButton: View {
         }
         .buttonStyle(.plain)
         .disabled(!isEnabled)
+        // A light tap so every control confirms the press (gated by the Haptics setting).
+        .sensoryFeedback(trigger: pressTick) { _, _ in
+            haptics ? .impact(weight: .light, intensity: 0.7) : nil
+        }
 
         // A LongPressGesture loses arbitration to the Button on a plain style, so the
         // hold is timed manually: a zero-distance drag reports finger-down/up while the

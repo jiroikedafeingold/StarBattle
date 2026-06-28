@@ -97,6 +97,15 @@ enum PieceStyle: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The English indefinite article for the singular noun — "an" before a vowel
+    /// sound, else "a". We treat a/e/i/o-initial nouns as vowel sounds; "u" words like
+    /// "unicorn" read as "a unicorn", so they stay "a". (English-only nicety; other
+    /// languages carry their own article in the translated strings.)
+    var article: String {
+        let vowels: Set<Character> = ["a", "e", "i", "o"]
+        return vowels.contains(noun.first ?? " ") ? "an" : "a"
+    }
+
     /// The lowercase plural noun (e.g. "two stars per row").
     var plural: String {
         switch self {
