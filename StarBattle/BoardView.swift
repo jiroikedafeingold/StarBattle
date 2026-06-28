@@ -14,6 +14,8 @@ struct BoardView: View {
     let highlights: [[CellHighlight]]
     /// Stars flagged as incorrect by "Check"; drawn in red.
     let wrongStars: Set<GridPosition>
+    /// Dots flagged by a deep "Check" as ruled-out-by-mistake; drawn in red.
+    var wrongDots: Set<GridPosition> = []
     /// The glyph used for placed marks and guess ghosts (from Settings).
     var pieceStyle: PieceStyle = .cherry
     /// The cell the current hint refers to; drawn with an attention ring.
@@ -49,6 +51,7 @@ struct BoardView: View {
                             highlight: highlights[row][col],
                             regionColor: Color.regionColor(puzzle.regionId(row: row, col: col)),
                             isWrong: wrongStars.contains(GridPosition(row: row, col: col)),
+                            isWrongDot: wrongDots.contains(GridPosition(row: row, col: col)),
                             hideStar: hiddenStars.contains(GridPosition(row: row, col: col)),
                             pieceStyle: pieceStyle,
                             cellSize: cell
@@ -150,6 +153,9 @@ private struct CellView: View {
     let highlight: CellHighlight
     let regionColor: Color
     let isWrong: Bool
+    /// When true, a `.dot` cell is drawn red — a deep "Check" flagged it as a square the
+    /// solution actually needs a cherry on.
+    var isWrongDot: Bool = false
     /// When true, a `.star` cell draws no piece (it's mid-burst in the win finale).
     var hideStar: Bool = false
     let pieceStyle: PieceStyle
@@ -174,10 +180,11 @@ private struct CellView: View {
                 }
             case .dot:
                 Circle()
-                    // Fixed dark grey so the dot reads on the light board in both
-                    // light and dark appearance.
-                    .fill(Color(white: 0.32))
-                    .frame(width: cellSize * 0.17, height: cellSize * 0.17)
+                    // Fixed dark grey so the dot reads on the light board in both light
+                    // and dark appearance; red when a deep Check flagged it as a mistake.
+                    .fill(isWrongDot ? Color.red : Color(white: 0.32))
+                    .frame(width: cellSize * (isWrongDot ? 0.30 : 0.17),
+                           height: cellSize * (isWrongDot ? 0.30 : 0.17))
             }
         }
         .contentShape(Rectangle())

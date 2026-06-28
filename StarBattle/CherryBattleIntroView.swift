@@ -38,6 +38,9 @@ struct CherryBattleIntroView: View {
     /// Called when the user taps Play.
     var onPlay: () -> Void = {}
 
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+
     @State private var appeared = false
 
     // MARK: Board data (mirrors the mockup)
@@ -88,6 +91,16 @@ struct CherryBattleIntroView: View {
         .onAppear { appeared = true }
     }
 
+    /// The glyph that drops onto the intro board — the player's chosen piece, keeping
+    /// the custom cherry-pair art when it's the cherry.
+    @ViewBuilder private var introPiece: some View {
+        if piece == .cherry {
+            CherryPair(width: 34)
+        } else {
+            PieceView(style: piece, isWrong: false, size: 40)
+        }
+    }
+
     // MARK: Board
     private var board: some View {
         VStack(spacing: 0) {
@@ -98,7 +111,7 @@ struct CherryBattleIntroView: View {
                         ZStack {
                             Rectangle().fill(regionColor(regions[r][c]))
                             if let order = cherryOrder[idx] {
-                                CherryPair(width: 34)
+                                introPiece
                                     .scaleEffect(appeared ? 1 : 0.4)
                                     .offset(y: appeared ? 0 : -24)
                                     .opacity(appeared ? 1 : 0)

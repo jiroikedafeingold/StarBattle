@@ -31,6 +31,9 @@ final class GameViewModel {
     /// Stars flagged by the last "Check" as not belonging to the solution. Cleared
     /// as soon as the player changes the board.
     private(set) var wrongStars: Set<GridPosition> = []
+    /// Dots flagged by a *deep* Check (long-press) as sitting on a square that actually
+    /// needs a cherry — a "you ruled this out by mistake" warning. Drawn in red.
+    private(set) var wrongDots: Set<GridPosition> = []
     /// Bumped each time "Check" runs, so the view can fire a pass/fail haptic.
     private(set) var checkPulse = 0
     /// Whether the most recent check found any incorrect stars.
@@ -347,6 +350,8 @@ final class GameViewModel {
         // In Highlight mode a tap cycles the *guess* layer exactly like the real
         // board cycles marks: empty → guess-dot → guess-cherry → empty.
         if isHighlightMode {
+            // Guesses never cover a committed mark — a real cherry or a real dot stays.
+            guard marks[row][col] == .empty else { return }
             pushHistory()
             let pos = GridPosition(row: row, col: col)
             switch highlights[row][col] {
@@ -396,6 +401,8 @@ final class GameViewModel {
             lastActionPlacedStar = false
         }
         tapPulse &+= 1
+        // Backing the last guess out in normal mode also drops the first-guess ghost.
+        noteHighlightsCleared()
         evaluateWin()
     }
 
@@ -431,7 +438,9 @@ final class GameViewModel {
     /// If the player has just emptied every guess while in Mark mode, drop a fading
     /// "?" on the cell where their guessing began.
     private func noteHighlightsCleared() {
-        guard isHighlightMode, firstGuessCell != nil, !hasHighlights else { return }
+        // Fires in either mode: backing the guesses out — even after leaving Mark mode —
+        // drops the reminder "?" on the cell where guessing began.
+        guard firstGuessCell != nil, !hasHighlights else { return }
         triggerGuessGhost()
     }
 
@@ -509,7 +518,8 @@ final class GameViewModel {
         if isHighlightMode {
             guard let base = dragBaseHighlights else { return }
             var updated = base
-            for cell in cells where updated[cell.row][cell.col] != .guessStar {
+            for cell in cells where updated[cell.row][cell.col] != .guessStar
+                && marks[cell.row][cell.col] == .empty {   // don't paint over real marks
                 if firstGuessCell == nil { firstGuessCell = cell }
                 updated[cell.row][cell.col] = .guessEmpty
             }
@@ -602,6 +612,7 @@ final class GameViewModel {
     /// guesses survive and shared neighbours stay until the last white guess goes.
     private func addGuessAutoDots(around pos: GridPosition) {
         for n in neighbors(of: pos) {
+            if marks[n.row][n.col] != .empty { continue }    // don't cover a real mark
             let h = highlights[n.row][n.col]
             if h == .guessStar { continue }                  // never overwrite a star guess
             let count = highlightAutoDotCount[n, default: 0]
@@ -652,6 +663,27 @@ final class GameViewModel {
         }
     }
 
+    /// A deeper Check, triggered by long-pressing the Check button: in addition to
+    /// flagging wrong cherries, it marks any dot the player placed on a square that the
+    /// solution actually needs a cherry on — catching squares ruled out by mistake.
+    func checkDeep() {
+        check()
+        guard !puzzle.solution.isEmpty else { return }
+        var badDots: Set<GridPosition> = []
+        for r in 0..<puzzle.size {
+            for c in 0..<puzzle.size where marks[r][c] == .dot {
+                let pos = GridPosition(row: r, col: c)
+                if puzzle.solution.contains(pos) { badDots.insert(pos) }
+            }
+        }
+        wrongDots = badDots
+        if !badDots.isEmpty {
+            lastCheckHadErrors = true
+            badPlacementThisGame = true
+            if wrongStars.isEmpty { playWrongHaptics() }   // avoid a double buzz
+        }
+    }
+
     /// A short, strong buzz of heavy impacts to signal a wrong placement.
     private func playWrongHaptics() {
         Task { @MainActor in
@@ -664,6 +696,7 @@ final class GameViewModel {
 
     /// Drops any "Check" highlight; called whenever the board changes.
     private func clearCheck() {
+        if !wrongDots.isEmpty { wrongDots.removeAll() }
         if !wrongStars.isEmpty { wrongStars.removeAll() }
     }
 
@@ -748,7 +781,10 @@ final class GameViewModel {
     func toggleHighlightMode() {
         guard !isRealizing else { return }
         dismissHint()
-        firstGuessCell = nil          // each Mark session tracks its own first guess
+        // Keep `firstGuessCell` across sessions: if the player leaves Mark mode with
+        // guesses still on the board, then comes back and erases (or backs them out),
+        // the "?" ghost should still appear where they first started guessing. It's
+        // cleared only when the guesses are committed or the board is reset.
         isHighlightMode.toggle()
     }
 

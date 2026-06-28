@@ -33,6 +33,9 @@ struct GameView: View {
     @State private var ruleToastTask: Task<Void, Never>?
     /// Bumped to give the Exit-Mark-Mode button a press haptic.
     @State private var exitPressTick = 0
+    /// True for ~1s after a deep Check (long-press) fires, so the release tap doesn't
+    /// re-run the normal Check.
+    @State private var deepCheckFired = false
 
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
@@ -250,6 +253,7 @@ struct GameView: View {
                 marks: model.marks,
                 highlights: model.highlights,
                 wrongStars: model.wrongStars,
+                wrongDots: model.wrongDots,
                 pieceStyle: pieceStyle,
                 hintCell: model.hintFocus,
                 ghostCell: model.guessGhost,
@@ -370,6 +374,17 @@ struct GameView: View {
         }
     }
 
+    /// The long-press payoff on Check: also flag dots placed on squares that actually
+    /// need a cherry. Arms the tap-swallowing flag (self-clearing if the tap never lands).
+    private func deepCheck() {
+        model.checkDeep()
+        deepCheckFired = true
+        Task {
+            try? await Task.sleep(for: .seconds(1))
+            deepCheckFired = false
+        }
+    }
+
     /// Cancels any running finale and clears its state (called when the win ends).
     private func resetWinFinale() {
         finaleTask?.cancel()
@@ -425,7 +440,12 @@ struct GameView: View {
                     if secretSolveFired { secretSolveFired = false; return }
                     showHintConfirm = true
                 }
-                ToolButton(title: "Check", systemImage: "checkmark.seal") { model.check() }
+                ToolButton(title: "Check", systemImage: "checkmark.seal",
+                           onLongPress: deepCheck, longPressSeconds: 5) {
+                    // Swallow the tap that lands when the finger lifts after a long press.
+                    if deepCheckFired { deepCheckFired = false; return }
+                    model.check()
+                }
                 ToolButton(title: "Mark", systemImage: "highlighter", tint: .purple,
                            style: model.isHighlightMode ? .active : .normal) {
                     model.toggleHighlightMode()
@@ -573,9 +593,10 @@ private struct ToolButton: View {
     var tint: Color = .accentColor
     var style: Style = .normal
     var isEnabled: Bool = true
-    /// An optional hidden action triggered by a long (10s) press. Used for the secret
-    /// near-solve on the Hint button; nil (and inert) for every other button.
+    /// An optional action triggered by a long press of `longPressSeconds`. Used for the
+    /// deep Check (5s) and the secret near-solve on Hint (10s); nil for other buttons.
     var onLongPress: (() -> Void)? = nil
+    var longPressSeconds: Double = 10
     let action: () -> Void
 
     /// Times the secret hold: started when the finger lands and cancelled the instant
@@ -628,7 +649,7 @@ private struct ToolButton: View {
                 // it fires so further onChanged ticks during the same hold can't re-arm it.
                 guard holdTask == nil else { return }
                 holdTask = Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(10))
+                    try? await Task.sleep(for: .seconds(longPressSeconds))
                     guard !Task.isCancelled else { return }
                     perform()
                 }

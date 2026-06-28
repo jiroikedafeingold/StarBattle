@@ -69,6 +69,9 @@ struct HelpView: View {
                     tip("🧪",
                         "Test an idea safely",
                         "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap “Do it” to commit it.")
+                    tip("🔎",
+                        "Deep-check your dots",
+                        "Tap Check to flag wrong \(piece.plural). Press and hold Check for a deeper check that also flags any dot you put on a square that actually needs \(piece.article) \(piece.noun).")
                 }
 
                 Section("Using Mark mode") {
