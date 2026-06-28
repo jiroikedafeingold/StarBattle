@@ -9,6 +9,7 @@ final class PuzzleStore {
     private(set) var saved: [Puzzle]
     private let capacity = 30
     private let fileURL: URL
+    private let prefetchURL: URL
 
     init() {
         let fm = FileManager.default
@@ -17,6 +18,7 @@ final class PuzzleStore {
         let dir = base.appendingPathComponent("StarBattle", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("puzzles.json")
+        prefetchURL = dir.appendingPathComponent("prefetch.json")
 
         if let data = try? Data(contentsOf: fileURL),
            let decoded = try? JSONDecoder().decode([Puzzle].self, from: data) {
@@ -24,6 +26,32 @@ final class PuzzleStore {
         } else {
             saved = []
         }
+    }
+
+    /// Loads the persisted ready-to-play queue, keyed by difficulty. These are boards
+    /// generated in a previous session but never shown, so restoring them makes the
+    /// first New/switch instant after a relaunch — especially for slow Hard boards —
+    /// without ever replaying a board the player has already seen.
+    func loadPrefetch() -> [Difficulty: [Puzzle]] {
+        guard let data = try? Data(contentsOf: prefetchURL),
+              let decoded = try? JSONDecoder().decode([String: [Puzzle]].self, from: data) else {
+            return [:]
+        }
+        var result: [Difficulty: [Puzzle]] = [:]
+        for (key, puzzles) in decoded {
+            if let level = Difficulty(rawValue: key) { result[level] = puzzles }
+        }
+        return result
+    }
+
+    /// Persists the current ready queue so it survives app restarts.
+    func savePrefetch(_ queues: [Difficulty: [Puzzle]]) {
+        var encodable: [String: [Puzzle]] = [:]
+        for (level, puzzles) in queues where !puzzles.isEmpty {
+            encodable[level.rawValue] = puzzles
+        }
+        guard let data = try? JSONEncoder().encode(encodable) else { return }
+        try? data.write(to: prefetchURL, options: .atomic)
     }
 
     /// A puzzle to show at launch for the given difficulty: a previously saved board of
@@ -34,19 +62,6 @@ final class PuzzleStore {
         }
         return Puzzle.starters(for: difficulty).randomElement()
             ?? Puzzle.placeholder(size: difficulty.boardSize, starsPerUnit: difficulty.starsPerUnit)
-    }
-
-    /// Removes and returns a saved puzzle of the given difficulty (other than the one
-    /// currently on screen), or nil if the pool has none. Lets `newGame` hand back a
-    /// previously-built board of the right level instantly instead of generating on
-    /// demand — so switching difficulty, or a rapid run of New taps, stays snappy.
-    func take(matching difficulty: Difficulty, excluding currentRegions: [[Int]]) -> Puzzle? {
-        guard let idx = saved.firstIndex(where: {
-            $0.difficulty == difficulty && $0.regions != currentRegions
-        }) else { return nil }
-        let puzzle = saved.remove(at: idx)
-        persist()
-        return puzzle
     }
 
     /// Adds a freshly generated puzzle (skipping duplicate layouts), trims the pool

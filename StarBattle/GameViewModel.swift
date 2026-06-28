@@ -138,6 +138,10 @@ final class GameViewModel {
             .flatMap(Difficulty.init(rawValue:)) ?? .easy
         difficulty = storedDifficulty
 
+        // Restore boards prepared (but never shown) in a previous session, so the first
+        // New/switch — especially a slow Hard board — is instant after a relaunch.
+        if !isPreview { prefetchReady = store.loadPrefetch() }
+
         // Restore the game the player left off in, if one was saved. Otherwise show a
         // real, playable board immediately (drawn from the saved pool so it varies)
         // while the generator warms up in the background.
@@ -198,6 +202,7 @@ final class GameViewModel {
         let fresh: Puzzle
         if !(prefetchReady[difficulty]?.isEmpty ?? true) {
             fresh = prefetchReady[difficulty]!.removeFirst()
+            store.savePrefetch(prefetchReady)
         } else {
             // Build on demand, streaming each phase to the overlay. The progress closure
             // runs on the generator's background thread; the stream hops it to the main
@@ -302,6 +307,7 @@ final class GameViewModel {
             self.store.add(puzzle)            // pooled for launch variety
             self.prefetchInFlight[level, default: 1] -= 1
             self.prefetchReady[level, default: []].append(puzzle)
+            self.store.savePrefetch(self.prefetchReady)   // survive relaunches
             self.topUpPrefetch()
         }
     }
