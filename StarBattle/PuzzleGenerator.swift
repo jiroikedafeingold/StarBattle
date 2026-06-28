@@ -42,6 +42,13 @@ nonisolated enum PuzzleGenerator {
     /// boards are, so generation stays as fast as before.
     static let hardMinTier2 = 5
 
+    /// Medium is biased toward its gentle end: a board that forces the depth-2 technique
+    /// at most `mediumLowTier2` times is taken immediately; otherwise the gentlest of the
+    /// first `mediumSampleCap` Medium boards seen is used, so Medium skews easy without
+    /// expensive over-searching.
+    static let mediumLowTier2 = 2
+    static let mediumSampleCap = 6
+
     /// An Easy board must contain at least this many "simple" regions — ones of
     /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is
     /// very constraining and usually cracks open by single-cell logic, so guaranteeing
@@ -82,6 +89,9 @@ nonisolated enum PuzzleGenerator {
         var rng = SystemRandomNumberGenerator()
         var fallback: Puzzle?         // any solvable puzzle, regardless of band
         var nonUniqueFallback: Puzzle?
+        var bestMedium: Puzzle?       // gentlest Medium-band board seen so far
+        var bestMediumTier2 = Int.max
+        var mediumSeen = 0
 
         // A converging layout settles in a few dozen refinement steps, so we cap
         // each attempt well above that and simply restart a stubborn one rather
@@ -165,13 +175,29 @@ nonisolated enum PuzzleGenerator {
                     fallback = fallback ?? puzzle
                 }
             } else if let profile = board.difficultyProfile() {
-                if band(forProfile: profile) == difficulty { return puzzle }
-                fallback = fallback ?? puzzle
+                if band(forProfile: profile) == difficulty {
+                    if difficulty == .medium {
+                        // Bias Medium toward its easy end: take a gentle board outright,
+                        // otherwise remember the gentlest and settle after a small sample
+                        // so we don't grind hunting for the very gentlest.
+                        if profile.tier2Steps <= mediumLowTier2 { return puzzle }
+                        if profile.tier2Steps < bestMediumTier2 {
+                            bestMediumTier2 = profile.tier2Steps
+                            bestMedium = puzzle
+                        }
+                        mediumSeen += 1
+                        if mediumSeen >= mediumSampleCap, let bm = bestMedium { return bm }
+                    } else {
+                        return puzzle
+                    }
+                } else {
+                    fallback = fallback ?? puzzle
+                }
             } else {
                 fallback = fallback ?? puzzle            // deeper than depth-2, still playable
             }
         }
-        return fallback ?? nonUniqueFallback
+        return bestMedium ?? fallback ?? nonUniqueFallback
             ?? Puzzle.starters(for: difficulty).randomElement()
             ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
     }
