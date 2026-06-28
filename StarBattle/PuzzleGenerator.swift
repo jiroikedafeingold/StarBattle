@@ -37,10 +37,10 @@ nonisolated enum PuzzleGenerator {
 
     /// The fewest times a board must *force* the depth-2 (nested) technique before we
     /// call it Hard. Below this it's a Medium with a few spicy moments; at zero it's
-    /// Easy. Calibrated empirically: random unique boards almost never solve by basic
-    /// logic alone, so difficulty is really about *how often* the hard technique is
-    /// unavoidable, and Hard boards force it many times (often 8–25).
-    static let hardMinTier2 = 6
+    /// Easy. Lowered from 6 to 5 so Medium boards force the hard technique at most four
+    /// times (a little gentler) — a small shift that barely changes how common Medium
+    /// boards are, so generation stays as fast as before.
+    static let hardMinTier2 = 5
 
     /// An Easy board must contain at least this many "simple" regions — ones of
     /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is

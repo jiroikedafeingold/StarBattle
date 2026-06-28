@@ -53,6 +53,10 @@ enum HintEngine {
         /// 0 = unknown, 1 = cherry, 2 = empty.
         var state: [Int8]
 
+        /// The size of the coloured region each cell belongs to, so hints can prefer a
+        /// move inside a small (more constraining, more helpful) region.
+        let regionSize: [Int]
+
         private static let king = [(-1, -1), (-1, 0), (-1, 1), (0, -1),
                                    (0, 1), (1, -1), (1, 0), (1, 1)]
 
@@ -80,6 +84,12 @@ enum HintEngine {
             self.regions = regs
             self.units = rows + cols + regs
             self.state = [Int8](repeating: 0, count: n * n)
+
+            var sizes = [Int](repeating: 0, count: n * n)
+            for regCells in regs {
+                for cell in regCells { sizes[cell] = regCells.count }
+            }
+            self.regionSize = sizes
         }
 
         func nextHint(marks: [[CellMark]]) -> Hint {
@@ -148,32 +158,37 @@ enum HintEngine {
         }
         private var itemArticleCap: String { itemArticle.capitalized }
 
-        /// Finds one new determination using sound techniques, in order of how
-        /// satisfying/clear the resulting hint is.
+        /// Finds one new determination using sound techniques. Every move below is a
+        /// sound single-cell deduction; among them we hand back the *most helpful* one —
+        /// preferring placing a cherry, then a move inside the smallest region — since
+        /// those advance the solve most. Deep (Hard-board) techniques are a last resort.
         private func nextDetermination() -> Step? {
+            var cherryMoves: [Step] = []
+            var dotMoves: [Step] = []
+
             // 1. Exact fit → cherry: a unit's open squares exactly equal the cherries it still needs.
             for (idx, unit) in units.enumerated() {
                 let (stars, open) = tally(unit)
                 let needed = quota - stars
                 if needed > 0 && open.count == needed, let cell = open.first {
-                    return Step(cell: cell, star: true,
-                                reason: "\(unitName(idx)) still needs \(needed) \(needed == 1 ? item : items) and has exactly that many open squares left — so this square must be \(itemArticle) \(item).")
+                    cherryMoves.append(Step(cell: cell, star: true,
+                                reason: "\(unitName(idx)) still needs \(needed) \(needed == 1 ? item : items) and has exactly that many open squares left — so this square must be \(itemArticle) \(item)."))
                 }
             }
             // 2. Contradiction → cherry: leaving this square empty would break a unit.
             for i in 0..<state.count where state[i] == 0 {
                 if contradicts(setting: i, to: 2) {
                     let pos = GridPosition(row: i / n, col: i % n)
-                    return Step(cell: i, star: true,
-                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be \(itemArticle) \(item) — leaving it empty would make a row, column or region impossible to complete.")
+                    cherryMoves.append(Step(cell: i, star: true,
+                                reason: "Row \(pos.row + 1), column \(pos.col + 1) has to be \(itemArticle) \(item) — leaving it empty would make a row, column or region impossible to complete."))
                 }
             }
             // 3. Unit already satisfied → empty.
             for (idx, unit) in units.enumerated() {
                 let (stars, open) = tally(unit)
                 if stars == quota, let cell = open.first {
-                    return Step(cell: cell, star: false,
-                                reason: "\(unitName(idx)) already has its \(quota) \(items), so this square can't be one.")
+                    dotMoves.append(Step(cell: cell, star: false,
+                                reason: "\(unitName(idx)) already has its \(quota) \(items), so this square can't be one."))
                 }
             }
             // 4. Touches a cherry → empty.
@@ -184,8 +199,8 @@ enum HintEngine {
                     guard nr >= 0, nr < n, nc >= 0, nc < n else { continue }
                     let j = nr * n + nc
                     if state[j] == 0 {
-                        return Step(cell: j, star: false,
-                                    reason: "\(itemsCap) can never touch — this square sits next to the \(item) at row \(r + 1), column \(c + 1), so it must be empty.")
+                        dotMoves.append(Step(cell: j, star: false,
+                                    reason: "\(itemsCap) can never touch — this square sits next to the \(item) at row \(r + 1), column \(c + 1), so it must be empty."))
                     }
                 }
             }
@@ -193,10 +208,16 @@ enum HintEngine {
             for i in 0..<state.count where state[i] == 0 {
                 if contradicts(setting: i, to: 1) {
                     let pos = GridPosition(row: i / n, col: i % n)
-                    return Step(cell: i, star: false,
-                                reason: "\(itemArticleCap) \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty.")
+                    dotMoves.append(Step(cell: i, star: false,
+                                reason: "\(itemArticleCap) \(item) at row \(pos.row + 1), column \(pos.col + 1) would break a row, column or region, so this square must be empty."))
                 }
             }
+
+            // Most helpful first: a cherry (in the smallest region), else a dot that
+            // fills in part of a small region.
+            if let best = cherryMoves.min(by: { regionSize[$0.cell] < regionSize[$1.cell] }) { return best }
+            if let best = dotMoves.min(by: { regionSize[$0.cell] < regionSize[$1.cell] }) { return best }
+
             // 6. Deep (nested) contradiction → cherry: leaving it empty leads, after a
             //    few more forced steps, to an impossible board. (Hard boards.)
             for i in 0..<state.count where state[i] == 0 {

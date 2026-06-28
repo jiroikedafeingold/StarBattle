@@ -441,7 +441,7 @@ struct GameView: View {
                     showHintConfirm = true
                 }
                 ToolButton(title: "Check", systemImage: "checkmark.seal",
-                           onLongPress: deepCheck, longPressSeconds: 5) {
+                           onLongPress: deepCheck, longPressSeconds: 3) {
                     // Swallow the tap that lands when the finger lifts after a long press.
                     if deepCheckFired { deepCheckFired = false; return }
                     model.check()
