@@ -42,12 +42,15 @@ nonisolated enum PuzzleGenerator {
     /// boards are, so generation stays as fast as before.
     static let hardMinTier2 = 5
 
-    /// Medium is biased toward its gentle end: a board that forces the depth-2 technique
-    /// at most `mediumLowTier2` times is taken immediately; otherwise the gentlest of the
-    /// first `mediumSampleCap` Medium boards seen is used, so Medium skews easy without
-    /// expensive over-searching.
+    /// Medium is biased toward its gentle end *and* toward simple shapes. A board that
+    /// forces the depth-2 technique at most `mediumLowTier2` times AND has at least
+    /// `mediumMinSmall` small (≤6 cell) regions is taken immediately; otherwise the best
+    /// of the first `mediumSampleCap` Medium boards is used — scored to favour more
+    /// simple shapes (extra footholds, so usually more than one way forward) and fewer
+    /// depth-2 moments — so Medium skews easy without expensive over-searching.
     static let mediumLowTier2 = 2
-    static let mediumSampleCap = 6
+    static let mediumMinSmall = 4
+    static let mediumSampleCap = 4
 
     /// An Easy board must contain at least this many "simple" regions — ones of
     /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is
@@ -89,8 +92,8 @@ nonisolated enum PuzzleGenerator {
         var rng = SystemRandomNumberGenerator()
         var fallback: Puzzle?         // any solvable puzzle, regardless of band
         var nonUniqueFallback: Puzzle?
-        var bestMedium: Puzzle?       // gentlest Medium-band board seen so far
-        var bestMediumTier2 = Int.max
+        var bestMedium: Puzzle?       // best (simplest-shaped, gentlest) Medium board seen
+        var bestMediumScore = Int.min
         var mediumSeen = 0
 
         // A converging layout settles in a few dozen refinement steps, so we cap
@@ -177,12 +180,19 @@ nonisolated enum PuzzleGenerator {
             } else if let profile = board.difficultyProfile() {
                 if band(forProfile: profile) == difficulty {
                     if difficulty == .medium {
-                        // Bias Medium toward its easy end: take a gentle board outright,
-                        // otherwise remember the gentlest and settle after a small sample
-                        // so we don't grind hunting for the very gentlest.
-                        if profile.tier2Steps <= mediumLowTier2 { return puzzle }
-                        if profile.tier2Steps < bestMediumTier2 {
-                            bestMediumTier2 = profile.tier2Steps
+                        // Prefer gentle boards (few depth-2 moments) that also have
+                        // several simple shapes — small regions are extra footholds, so
+                        // there's usually more than one logical way forward instead of a
+                        // single forced line. Take an ideal board outright; otherwise keep
+                        // the best by score and settle after a small sample, so we don't
+                        // grind hunting for the very best.
+                        let small = smallRegionCount(regions, size: size)
+                        if profile.tier2Steps <= mediumLowTier2 && small >= mediumMinSmall {
+                            return puzzle
+                        }
+                        let score = small * 10 - profile.tier2Steps
+                        if score > bestMediumScore {
+                            bestMediumScore = score
                             bestMedium = puzzle
                         }
                         mediumSeen += 1

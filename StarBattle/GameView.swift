@@ -37,6 +37,11 @@ struct GameView: View {
     /// re-run the normal Check.
     @State private var deepCheckFired = false
 
+    /// A difficulty change waiting on confirmation (because it would abandon a game in
+    /// progress), plus the flag that presents the confirmation dialog.
+    @State private var pendingDifficultyRaw = ""
+    @State private var showSwitchConfirm = false
+
     init(model: GameViewModel? = nil) {
         _model = State(initialValue: model ?? GameViewModel())
     }
@@ -118,6 +123,15 @@ struct GameView: View {
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
             Button("New Puzzle", role: .destructive) { Task { await model.newGame() } }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Your current progress will be lost.")
+        }
+        .confirmationDialog("Switch difficulty?", isPresented: $showSwitchConfirm,
+                            titleVisibility: .visible) {
+            Button("Switch & Start New", role: .destructive) {
+                difficultyRaw = pendingDifficultyRaw
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your current progress will be lost.")
@@ -224,7 +238,11 @@ struct GameView: View {
     }
 
     private var difficultyPicker: some View {
-        Picker("Difficulty", selection: $difficultyRaw) {
+        // The picker shows `difficultyRaw` but routes a tap through `requestDifficulty`,
+        // which asks before abandoning a game in progress. If the player cancels, the
+        // segment snaps back because the binding's value never changed.
+        Picker("Difficulty", selection: Binding(get: { difficultyRaw },
+                                                set: { requestDifficulty($0) })) {
             ForEach(Difficulty.allCases) { level in
                 Text(level.shortLabel).tag(level.rawValue)
             }
@@ -241,6 +259,19 @@ struct GameView: View {
             if old.starsPerUnit != new.starsPerUnit {
                 showRuleToast(stars: new.starsPerUnit)
             }
+        }
+    }
+
+    /// Handles a difficulty-picker tap: applies it immediately on a fresh board, or asks
+    /// first when a game is in progress. Committing the change (here or from the dialog)
+    /// updates `difficultyRaw`, whose `onChange` starts the new game.
+    private func requestDifficulty(_ raw: String) {
+        guard raw != difficultyRaw else { return }
+        if model.hasProgress {
+            pendingDifficultyRaw = raw
+            showSwitchConfirm = true
+        } else {
+            difficultyRaw = raw
         }
     }
 

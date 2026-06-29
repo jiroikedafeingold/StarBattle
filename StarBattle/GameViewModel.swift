@@ -62,6 +62,13 @@ final class GameViewModel {
     /// Whether any cell currently carries a highlight.
     var hasHighlights: Bool { highlights.contains { row in row.contains { $0 != .none } } }
 
+    /// True when the board carries player marks or guesses that switching away (or a new
+    /// puzzle) would discard — used to ask before abandoning an in-progress game.
+    var hasProgress: Bool {
+        !isSolved && !isGenerating
+            && (hasHighlights || marks.contains { row in row.contains { $0 != .empty } })
+    }
+
     /// The cell of the very first guess in the current Mark-mode exploration. Used to
     /// drop a fading "?" there if the player backs all the way out of their guesses.
     private var firstGuessCell: GridPosition?
