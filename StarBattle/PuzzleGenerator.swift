@@ -49,7 +49,7 @@ nonisolated enum PuzzleGenerator {
     /// simple shapes (extra footholds, so usually more than one way forward) and fewer
     /// depth-2 moments — so Medium skews easy without expensive over-searching.
     static let mediumLowTier2 = 2
-    static let mediumMinSmall = 4
+    static let mediumMinSmall = 5   // raised 4→5 so Medium carries more simple shapes
     static let mediumSampleCap = 4
 
     /// An Easy board must contain at least this many "simple" regions — ones of
@@ -114,10 +114,13 @@ nonisolated enum PuzzleGenerator {
             }
             onProgress?(attempt, .shaping)
             var built: [[Int]]?
-            // The small-region bias keeps the big 10×10 Easy board gentle. A 5×5 beginner
-            // board is already trivial, and biasing it just dumps the leftovers into one
-            // oversized region — so let beginner grow naturally balanced instead.
-            let preferSmall = difficulty == .easy
+            // The small-region bias fills the big 10×10 board with lots of little,
+            // easily-cracked regions — it keeps Easy gentle and gives Medium more simple
+            // shapes (extra footholds) too, so its few depth-2 moments sit among friendlier
+            // surroundings. A 5×5 beginner board is already trivial, and biasing just dumps
+            // the leftovers into one oversized region; Hard is meant to be knotty — so both
+            // grow naturally balanced instead.
+            let preferSmall = difficulty == .easy || difficulty == .medium
             for _ in 0..<8 {
                 if let candidate = growRegions(solution: solution, size: size, stars: stars,
                                                rng: &rng, preferSmallRegions: preferSmall) {

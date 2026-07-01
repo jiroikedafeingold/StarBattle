@@ -287,11 +287,23 @@ final class GameViewModel {
     private func topUpPrefetch() {
         // Current level first, then the rest, so the level being played fills soonest.
         let order = [difficulty] + Difficulty.allCases.filter { $0 != difficulty }
-        for level in order {
+        // How many more boards each level still needs to reach its target. A level can
+        // hold more than its target (e.g. the one we just switched away from), so clamp
+        // at zero.
+        let needed = order.reduce(into: [Difficulty: Int]()) { result, level in
             let have = (prefetchReady[level]?.count ?? 0) + (prefetchInFlight[level] ?? 0)
-            // A level can hold more than its target (e.g. the level we just switched away
-            // from), so guard against a reversed range.
-            for _ in 0..<max(0, prefetchTarget(level) - have) {
+            result[level] = max(0, prefetchTarget(level) - have)
+        }
+        // Schedule round-robin instead of filling one level before starting the next.
+        // Builds run one at a time, so the *order* they're queued in decides what's ready
+        // first. The first round seeds a single board for every difficulty, so the slow
+        // Medium and Hard levels start building right after the current level's first
+        // board — guaranteeing at least one of each is on its way, rather than waiting
+        // behind the current level's full buffer. Later rounds top the current level up
+        // to its deeper target.
+        let rounds = needed.values.max() ?? 0
+        for round in 0..<rounds {
+            for level in order where round < (needed[level] ?? 0) {
                 scheduleBuild(level)
             }
         }
