@@ -574,16 +574,18 @@ struct AppBackground: View {
     ])
 }
 
-/// The game title, matching the intro screen's wordmark: "Cherry Battle" in a bold
-/// rounded face with a light "Cherry" and a cherry-red "Battle".
+/// The game title: "CHERRY BATTLE" in all caps to match the splash logo — a cherry-red
+/// "CHERRY" and a royal-blue "BATTLE" in a heavy rounded face. Kept clean and flat for
+/// in-app chrome.
 struct GameTitle: View {
     var body: some View {
-        // "Cherry" uses the primary label colour so it reads on either background
-        // (near-white in dark, near-black in light); "Battle" stays cherry red.
-        (Text(verbatim: "Cherry ").foregroundColor(.primary)
-         + Text(verbatim: "Battle").foregroundColor(Color(hex: 0xE51937)))
-            .font(.system(size: 40, weight: .bold, design: .rounded))
+        (Text(verbatim: "CHERRY ").foregroundColor(Color(hex: 0xE51937))
+         + Text(verbatim: "BATTLE").foregroundColor(Color(hex: 0x2E6BE5)))
+            .font(.system(size: 34, weight: .heavy, design: .rounded))
+            .minimumScaleFactor(0.7)
+            .lineLimit(1)
             .accessibilityLabel("Cherry Battle")
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
