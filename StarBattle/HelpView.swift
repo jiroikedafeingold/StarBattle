@@ -47,45 +47,51 @@ struct HelpView: View {
                          "Solve it when all \(piece.plural) are placed legally — the board celebrates!")
                 }
 
-                Section("Tips & tactics") {
+                Section("How to solve") {
                     tip("📝",
-                        "Mark, don't guess",
-                        "Put a dot in every square you’ve ruled out. Placing \(piece.article) \(piece.noun) dots its eight neighbours for you automatically.")
+                        "Mark what you rule out",
+                        "Put a dot in every square that can’t hold \(piece.article) \(piece.noun). Placing \(piece.article) \(piece.noun) dots its eight neighbours for you automatically, so the board fills with clues.")
                     tip("🎯",
                         "Start where it’s tight",
-                        "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are a great first move.")
+                        "Look for a row, column or region whose \(piece.plural) can only fit one way — small or cramped regions are the easiest first moves.")
                     if stars == 1 {
                         tip("🔢",
                             "Count the gaps",
-                            "If a line still needs its \(piece.noun) and has exactly one open square, that square must be the \(piece.noun). Once a line has its \(piece.noun), every other square is empty.")
+                            "If a line still needs its \(piece.noun) and has just one open square, that square is it. Once a line has its \(piece.noun), every other square is a dot.")
                     } else {
                         tip("🔢",
                             "Count the gaps",
-                            "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). If a line already has its two, every other square is empty.")
+                            "If a line still needs two \(piece.plural) and has exactly two open squares, both must be \(piece.plural). Once a line has its two, every other square is a dot.")
                     }
+                    tip("🧠",
+                        "Imagine, then follow the logic",
+                        "The heart of the puzzle: pick a tricky square and imagine \(piece.article) \(piece.noun) there. Follow what it forces — neighbours become dots, and those dots force the next \(piece.plural). If the chain hits a contradiction, that square must be a dot instead; if it all fits, you’ve found real moves. Mark mode (below) lets you try this safely.")
                     tip("💡",
                         "Ask for a hint",
-                        "Hint places the next square that logic forces and explains why — a good way to learn a new tactic.")
-                    tip("🧪",
-                        "Test an idea safely",
-                        "In Mark mode, pencil in a candidate \(piece.noun) and its dots. If it leads to a dead end, clear it; if it holds up, tap “Do it” to commit it.")
-                    tip("🔎",
-                        "Deep-check your dots",
-                        "Tap Check to flag wrong \(piece.plural). Press and hold Check for a deeper check that also flags any dot you put on a square that actually needs \(piece.article) \(piece.noun).")
+                        "Stuck? Hint places the next square logic forces and explains why — a good way to learn a new tactic.")
                 }
 
-                Section("Using Mark mode") {
+                Section("Mark mode: try a “what if”") {
                     VStack(alignment: .leading, spacing: 12) {
                         markParagraph("🖍️",
-                            "Mark mode is for trying out a path. Tap the **Mark** button and the board turns into a scratch pad: tap a square once for a guess-dot, again for a guess-\(piece.noun) — exactly like the real board, but nothing is committed yet.")
+                            "Mark mode is where you play out that “what if” without commitment. Tap **Mark** and the board becomes a scratch pad: tap a square once for a guess-dot, again for a guess-\(piece.noun) — just like the real board, but nothing sticks yet.")
                         markParagraph("🧭",
-                            "Pick a square you’re unsure about and guess \(piece.article) \(piece.noun) there. Then follow the consequences — place the dots and \(piece.plural) that guess forces. If it all holds together, tap **Do it** to make the guesses real.")
+                            "Guess \(piece.article) \(piece.noun) in the square you’re unsure about, then follow the consequences — pencil in the dots and \(piece.plural) it forces. If everything holds together, tap **Do it** to make the guesses real.")
                         markParagraph("❌",
-                            "If the path leads to a contradiction, then your first guess was wrong — so that square is actually a **dot**. Either way you’ve learned something, and often you can read off several more squares from there.")
+                            "If the path leads to a contradiction, your guess was wrong — so that square is really a **dot**. Either way you’ve learned something, and you can usually read off several more squares from there.")
                         markParagraph("📍",
-                            "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you should know whether it’s \(piece.article) \(piece.noun) or a dot, so mark it for real.")
+                            "When you back out of a path (Undo) or tap **Erase**, the square where you started stays **outlined for a few seconds** — by then you know whether it’s \(piece.article) \(piece.noun) or a dot, so mark it for real.")
                     }
                     .padding(.vertical, 2)
+                }
+
+                Section("Check your work") {
+                    tip("✅",
+                        "Check for mistakes",
+                        "Tap Check to flag any \(piece.plural) that don’t belong in the solution, drawn in red.")
+                    tip("🔎",
+                        "Deep-check your dots",
+                        "Press and hold Check for a deeper look that also flags, in red, any dot you put on a square that actually needs \(piece.article) \(piece.noun).")
                 }
 
                 Section {
