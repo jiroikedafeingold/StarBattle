@@ -2,16 +2,17 @@
 //  CherryBattleIntroView.swift
 //  Cherry Battle — intro / welcome screen
 //
-//  Shows the "Cherry Battle" key-art splash (two cherries squaring off) full-bleed,
-//  brought to life with gentle motion: a slow breathing zoom, a throbbing energy
-//  flash where the fists clash, and a few twinkling sparkles. Tapping anywhere (or
-//  waiting a beat) drops into the game.
+//  Shows the "Cherry Battle" key-art splash (two cherries squaring off) full-bleed and
+//  makes it feel like a live brawl: a repeating one-two impact that shakes the frame,
+//  flashes light where the fists clash, and sends a shockwave ring rippling out — over
+//  a slow breathing zoom, with sparkles twinkling around the logo. Tapping anywhere
+//  (or waiting a beat) drops into the game.
 //
 //  The artwork lives in the asset catalog as `SplashArt`. Its own comic wordmark is
 //  baked into the image; the in-game title (`GameTitle`) echoes that lettering in a
 //  quieter form.
 //
-//  No external packages required. iOS 17+.
+//  No external packages required. iOS 17+ (uses KeyframeAnimator).
 //
 
 import SwiftUI
@@ -25,87 +26,157 @@ struct CherryBattleIntroView: View {
     var onPlay: () -> Void = {}
 
     @State private var appeared = false
-    /// Slow, always-on breathing zoom of the artwork.
-    @State private var breathe = false
-    /// Faster pulse driving the clash flash and sparkle twinkle.
-    @State private var pulse = false
+
+    /// The animated state driven by the looping "battle" keyframes.
+    private struct SplashPose {
+        var zoom: CGFloat = 1.06    // breathing Ken-Burns zoom
+        var shakeX: CGFloat = 0     // impact camera-shake
+        var shakeY: CGFloat = 0
+        var rot: Double = 0         // tiny rotational kick on impact
+        var flash: CGFloat = 0      // clash flash intensity (0…1)
+        var ring: CGFloat = 0       // shockwave progress (0 hidden … 1 fully expanded)
+    }
+
+    /// Where the two fists meet, as a fraction of the screen — the flash and shockwave
+    /// radiate from here.
+    private let clash = UnitPoint(x: 0.5, y: 0.46)
 
     var body: some View {
-        ZStack {
-            // Deep blue base matching the art's border, in case of any letterbox.
-            Color(hex: 0x12275C).ignoresSafeArea()
+        GeometryReader { geo in
+            ZStack {
+                // Deep blue base matching the art's border, in case of any letterbox.
+                Color(hex: 0x12275C)
 
-            // The key art, filling the screen with a slow Ken-Burns breath. The mild
-            // over-scale also crops the artwork's mocked-up status bar off the top.
+                KeyframeAnimator(initialValue: SplashPose(), repeating: true) { pose in
+                    art(geo: geo, pose: pose)
+                } keyframes: { _ in
+                    // A ~2.2s loop: a beat of calm, then a snappy one-two that shakes,
+                    // flashes and ripples, then settles.
+                    KeyframeTrack(\.zoom) {
+                        CubicKeyframe(1.13, duration: 1.1)
+                        CubicKeyframe(1.06, duration: 1.1)
+                    }
+                    KeyframeTrack(\.flash) {
+                        LinearKeyframe(0, duration: 0.45)
+                        SpringKeyframe(1.0, duration: 0.13, spring: .snappy)
+                        CubicKeyframe(0, duration: 0.50)
+                        SpringKeyframe(0.85, duration: 0.13, spring: .snappy)
+                        CubicKeyframe(0, duration: 0.99)
+                    }
+                    KeyframeTrack(\.shakeX) {
+                        LinearKeyframe(0, duration: 0.45)
+                        CubicKeyframe(9, duration: 0.05)
+                        CubicKeyframe(-7, duration: 0.05)
+                        CubicKeyframe(4, duration: 0.05)
+                        CubicKeyframe(0, duration: 0.05)
+                        LinearKeyframe(0, duration: 0.43)
+                        CubicKeyframe(6, duration: 0.05)
+                        CubicKeyframe(-4, duration: 0.05)
+                        CubicKeyframe(0, duration: 0.05)
+                        LinearKeyframe(0, duration: 0.97)
+                    }
+                    KeyframeTrack(\.shakeY) {
+                        LinearKeyframe(0, duration: 0.45)
+                        CubicKeyframe(-5, duration: 0.06)
+                        CubicKeyframe(4, duration: 0.06)
+                        CubicKeyframe(0, duration: 0.06)
+                        LinearKeyframe(0, duration: 1.57)
+                    }
+                    KeyframeTrack(\.rot) {
+                        LinearKeyframe(0, duration: 0.45)
+                        CubicKeyframe(1.4, duration: 0.06)
+                        CubicKeyframe(-1.1, duration: 0.06)
+                        CubicKeyframe(0, duration: 0.06)
+                        LinearKeyframe(0, duration: 1.57)
+                    }
+                    KeyframeTrack(\.ring) {
+                        LinearKeyframe(0, duration: 0.45)
+                        LinearKeyframe(1, duration: 0.55)
+                        LinearKeyframe(1, duration: 1.20)
+                    }
+                }
+
+                sparkleLayer(geo)
+
+                // Tap anywhere to skip ahead (the intro also advances on its own).
+                Color.clear
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        #if canImport(UIKit)
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        #endif
+                        onPlay()
+                    }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+        }
+        .ignoresSafeArea()
+        .opacity(appeared ? 1 : 0)
+        .scaleEffect(appeared ? 1 : 1.14)   // punchy pop-in
+        .onAppear {
+            withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { appeared = true }
+        }
+    }
+
+    /// The artwork plus the impact effects, transformed by the current pose.
+    private func art(geo: GeometryProxy, pose: SplashPose) -> some View {
+        let w = geo.size.width, h = geo.size.height
+        let center = CGPoint(x: w * clash.x, y: h * clash.y)
+        return ZStack {
             Image("SplashArt")
                 .resizable()
                 .scaledToFill()
-                .scaleEffect(breathe ? 1.11 : 1.06)
-                .ignoresSafeArea()
+                .frame(width: w, height: h)
+                .scaleEffect(pose.zoom)
+                .rotationEffect(.degrees(pose.rot), anchor: .center)
+                .offset(x: pose.shakeX, y: pose.shakeY)
+                .clipped()
                 .accessibilityLabel("Cherry Battle")
 
-            clashFlash
-            sparkleLayer
-
-            // Tap anywhere to skip ahead (the intro also advances on its own).
-            Color.clear
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    #if canImport(UIKit)
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                    #endif
-                    onPlay()
-                }
-        }
-        .opacity(appeared ? 1 : 0)
-        .onAppear {
-            withAnimation(.easeOut(duration: 0.4)) { appeared = true }
-            withAnimation(.easeInOut(duration: 5).repeatForever(autoreverses: true)) { breathe = true }
-            withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true)) { pulse = true }
-        }
-    }
-
-    /// A throbbing burst of light where the two cherries' fists meet — makes the clash
-    /// in the art feel like it's crackling with energy.
-    private var clashFlash: some View {
-        GeometryReader { geo in
+            // Clash flash — a base glow that spikes bright on each hit.
             RadialGradient(
-                gradient: Gradient(colors: [
-                    .white.opacity(0.75),
-                    Color(hex: 0xFFC24D, alpha: 0.5),
-                    .clear
-                ]),
-                center: .center, startRadius: 1, endRadius: geo.size.width * 0.3)
-                .frame(width: geo.size.width * 0.7, height: geo.size.width * 0.7)
-                .scaleEffect(pulse ? 1.12 : 0.9)
-                .opacity(pulse ? 0.85 : 0.4)
+                gradient: Gradient(colors: [.white.opacity(0.85),
+                                            Color(hex: 0xFFC24D, alpha: 0.55), .clear]),
+                center: .center, startRadius: 1, endRadius: w * 0.32)
+                .frame(width: w * 0.8, height: w * 0.8)
+                .scaleEffect(0.8 + pose.flash * 0.7)
+                .opacity(0.22 + pose.flash * 0.78)
                 .blendMode(.screen)
-                .position(x: geo.size.width * 0.5, y: geo.size.height * 0.46)
+                .position(center)
+
+            // Shockwave ring rippling out from the collision.
+            Circle()
+                .strokeBorder(
+                    LinearGradient(colors: [.white, Color(hex: 0xFF5A5A), Color(hex: 0x4D9BFF)],
+                                   startPoint: .leading, endPoint: .trailing),
+                    lineWidth: max(2.5, w * 0.022))
+                .frame(width: w * 0.5, height: w * 0.5)
+                .scaleEffect(0.15 + pose.ring * 1.55)
+                .opacity(pose.ring <= 0.001 ? 0 : Double(1 - pose.ring))
+                .blendMode(.screen)
+                .position(center)
         }
-        .allowsHitTesting(false)
-        .ignoresSafeArea()
+        .frame(width: w, height: h)
     }
 
     /// A handful of twinkling sparkles scattered around the logo, echoing the art.
-    private var sparkleLayer: some View {
-        GeometryReader { geo in
-            ForEach(Self.sparkles.indices, id: \.self) { i in
-                let s = Self.sparkles[i]
-                SparkleView(delay: s.delay, sizePt: s.size)
-                    .position(x: geo.size.width * s.x, y: geo.size.height * s.y)
-            }
+    private func sparkleLayer(_ geo: GeometryProxy) -> some View {
+        ForEach(Self.sparkles.indices, id: \.self) { i in
+            let s = Self.sparkles[i]
+            SparkleView(delay: s.delay, sizePt: s.size)
+                .position(x: geo.size.width * s.x, y: geo.size.height * s.y)
         }
         .allowsHitTesting(false)
-        .ignoresSafeArea()
     }
 
     /// Sparkle placements as fractions of the screen (near the logo and the clash).
     private static let sparkles: [(x: CGFloat, y: CGFloat, size: CGFloat, delay: Double)] = [
-        (0.17, 0.135, 26, 0.0),
-        (0.83, 0.115, 20, 0.5),
-        (0.31, 0.205, 15, 1.1),
-        (0.71, 0.225, 17, 0.8),
-        (0.50, 0.30, 13, 1.4)
+        (0.16, 0.13, 34, 0.0),
+        (0.85, 0.11, 26, 0.35),
+        (0.30, 0.20, 20, 0.7),
+        (0.72, 0.225, 22, 0.9),
+        (0.50, 0.31, 18, 1.2),
+        (0.12, 0.42, 16, 1.5)
     ]
 }
 
@@ -122,12 +193,12 @@ private struct SparkleView: View {
         SparkleShape()
             .fill(.white)
             .frame(width: sizePt, height: sizePt)
-            .scaleEffect(on ? 1 : 0.3)
-            .opacity(on ? 0.9 : 0.15)
-            .rotationEffect(.degrees(on ? 18 : -18))
-            .shadow(color: .white.opacity(0.7), radius: 3)
+            .scaleEffect(on ? 1 : 0.2)
+            .opacity(on ? 1 : 0.1)
+            .rotationEffect(.degrees(on ? 25 : -25))
+            .shadow(color: .white.opacity(0.85), radius: 4)
             .onAppear {
-                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true).delay(delay)) {
+                withAnimation(.easeInOut(duration: 0.85).repeatForever(autoreverses: true).delay(delay)) {
                     on = true
                 }
             }
