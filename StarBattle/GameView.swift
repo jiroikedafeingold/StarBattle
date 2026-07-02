@@ -70,6 +70,12 @@ struct GameView: View {
     private var isPadLayout: Bool { hSize == .regular && vSize == .regular }
 
     var body: some View {
+        // Split across three helpers so no single expression is too large for the
+        // compiler to type-check (Release archiving is stricter than a debug build).
+        withFeedback(withDialogs(mainLayout))
+    }
+
+    private var mainLayout: some View {
         VStack(spacing: 10) {
             header
 
@@ -125,6 +131,11 @@ struct GameView: View {
         }
         .animation(.spring(duration: 0.5), value: showBanner)
         .animation(.spring(duration: 0.35), value: model.isHighlightMode)
+    }
+
+    /// Attaches the confirmation dialogs, the streak alert and the paywall sheet.
+    private func withDialogs<Content: View>(_ content: Content) -> some View {
+        content
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
             Button("New Puzzle", role: .destructive) {
@@ -179,6 +190,11 @@ struct GameView: View {
         .sheet(isPresented: $showPaywall) {
             PaywallView()
         }
+    }
+
+    /// Attaches the haptic feedback, win-finale reactions and the game timer.
+    private func withFeedback<Content: View>(_ content: Content) -> some View {
+        content
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             guard haptics else { return nil }
             return model.lastActionPlacedStar ? .impact(weight: .heavy, intensity: 1.0)
