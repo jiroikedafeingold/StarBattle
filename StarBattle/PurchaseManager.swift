@@ -71,7 +71,7 @@ final class PurchaseManager {
     @discardableResult
     func purchase() async -> Bool {
         guard let product else {
-            lastError = "The purchase isn’t available right now. Please try again in a moment."
+            lastError = String(localized: "The purchase isn’t available right now. Please try again in a moment.")
             return false
         }
         isPurchasing = true
@@ -84,13 +84,13 @@ final class PurchaseManager {
             case .userCancelled:
                 return false
             case .pending:
-                lastError = "Your purchase is pending approval and will unlock once it’s approved."
+                lastError = String(localized: "Your purchase is pending approval and will unlock once it’s approved.")
                 return false
             @unknown default:
                 return false
             }
         } catch {
-            lastError = "The purchase couldn’t be completed. Please try again."
+            lastError = String(localized: "The purchase couldn’t be completed. Please try again.")
             return false
         }
     }
@@ -107,7 +107,7 @@ final class PurchaseManager {
         }
         await updateEntitlement()
         if !hasFullAccess {
-            lastError = "No previous purchase was found for this Apple Account."
+            lastError = String(localized: "No previous purchase was found for this Apple Account.")
         }
     }
 
