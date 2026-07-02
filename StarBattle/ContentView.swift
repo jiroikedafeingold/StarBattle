@@ -8,6 +8,9 @@ struct ContentView: View {
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
 
     @State private var model = GameViewModel()
+    /// The in-app purchase / entitlement service, shared with every screen (Play gates
+    /// new puzzles on it; Settings buys and restores it).
+    @State private var store = PurchaseManager()
     @State private var showOnboarding = false
     @Environment(\.scenePhase) private var scenePhase
 
@@ -29,6 +32,7 @@ struct ContentView: View {
             SettingsView()
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
+        .environment(store)
         .preferredColorScheme(appearanceMode.colorScheme)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView()

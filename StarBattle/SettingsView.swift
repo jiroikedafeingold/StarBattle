@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 
 /// The Settings tab: appearance, the piece icon, and whether the timer is shown.
 /// Everything is backed by `@AppStorage`, so changes apply live across the app.
@@ -11,9 +12,41 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.haptics) private var haptics = true
     @AppStorage(SettingsKey.winCelebration) private var winCelebration = true
 
+    @Environment(PurchaseManager.self) private var store
+    @State private var showPaywall = false
+
     var body: some View {
         NavigationStack {
             Form {
+                Section("Full Access") {
+                    if store.hasFullAccess {
+                        Label {
+                            Text("Full Access unlocked")
+                        } icon: {
+                            Image(systemName: "checkmark.seal.fill").foregroundStyle(.green)
+                        }
+                        Text("Thanks for your support — enjoy unlimited puzzles in every mode!")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack {
+                                Label("Unlock Full Access", systemImage: "infinity")
+                                Spacer()
+                                if let product = store.product {
+                                    Text(product.displayPrice).foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        Button("Restore Purchase") {
+                            Task { await store.restore() }
+                        }
+                        .disabled(store.isPurchasing || store.isRestoring)
+                    }
+                }
+
                 Section("Appearance") {
                     Picker("Theme", selection: $appearance) {
                         ForEach(AppearanceMode.allCases) { mode in
@@ -58,10 +91,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .sheet(isPresented: $showPaywall) {
+                PaywallView()
+            }
         }
     }
 }
 
 #Preview {
     SettingsView()
+        .environment(PurchaseManager())
 }

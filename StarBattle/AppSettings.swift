@@ -27,6 +27,39 @@ enum SettingsKey {
     }
 }
 
+/// The free-tier gate: without "Full Access", a player may start **one new puzzle per
+/// day in each of Easy, Medium and Hard**. Beginner is always free and unlimited.
+/// Resuming a saved game or the launch board never counts — only *starting a new*
+/// puzzle does. Full Access (see `PurchaseManager`) lifts the limit entirely; this type
+/// only tracks the free allowance and does not know about entitlements.
+enum FreePuzzleLimiter {
+
+    /// Whether this mode is subject to the daily limit. Beginner never is.
+    static func isLimited(_ difficulty: Difficulty) -> Bool { difficulty != .beginner }
+
+    /// Whether a free player may start a new puzzle in `difficulty` today.
+    static func hasFreePuzzle(in difficulty: Difficulty) -> Bool {
+        guard isLimited(difficulty) else { return true }
+        return UserDefaults.standard.object(forKey: key(difficulty)) as? Int != todayIndex
+    }
+
+    /// Records that a free player has used today's puzzle for `difficulty`.
+    static func recordPuzzle(in difficulty: Difficulty) {
+        guard isLimited(difficulty) else { return }
+        UserDefaults.standard.set(todayIndex, forKey: key(difficulty))
+    }
+
+    private static func key(_ difficulty: Difficulty) -> String {
+        "freePuzzleDay_\(difficulty.rawValue)"
+    }
+
+    /// The current calendar day as a whole-day index in the user's local time zone, so
+    /// the allowance resets at local midnight.
+    private static var todayIndex: Int {
+        Int(Calendar.current.startOfDay(for: Date()).timeIntervalSinceReferenceDate / 86_400)
+    }
+}
+
 /// Puzzle difficulty, graded by the *peak* technique a solve forces and how often —
 /// not the aggregate step count. Bands are defined in
 /// `PuzzleGenerator.band(forProfile:)`. `nonisolated` so the off-main generator

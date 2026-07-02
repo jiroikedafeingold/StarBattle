@@ -1,0 +1,31 @@
+{
+  "identifier" : "A1B2C3D4-0000-4000-8000-CB0000000001",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "1.99",
+      "familyShareable" : false,
+      "internalID" : "A1B2C3D4-0000-4000-8000-CB0000000002",
+      "localizations" : [
+        {
+          "description" : "Unlimited new puzzles in Easy, Medium and Hard.",
+          "displayName" : "Cherry Battle Full Access",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "CherryBattleFullAccess",
+      "referenceName" : "CherryBattleFullAccess",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_applicationInternalID" : "",
+    "_developerTeamID" : "",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}

@@ -111,7 +111,8 @@ struct CherryBattleIntroView: View {
             .frame(width: geo.size.width, height: geo.size.height)
         }
         .ignoresSafeArea()
-        .opacity(appeared ? 1 : 0)
+        // Opaque from the first frame — the base colour and art fully cover the game
+        // board beneath, so it never flashes through. Only the scale animates in.
         .scaleEffect(appeared ? 1 : 1.14)   // punchy pop-in
         .onAppear {
             withAnimation(.spring(response: 0.5, dampingFraction: 0.75)) { appeared = true }

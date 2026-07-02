@@ -54,6 +54,11 @@ struct GameView: View {
 
     @Environment(\.horizontalSizeClass) private var hSize
     @Environment(\.verticalSizeClass) private var vSize
+    /// The purchase / entitlement service, used to gate new puzzles behind the daily
+    /// free limit (lifted by Full Access).
+    @Environment(PurchaseManager.self) private var store
+    /// Presents the Full Access paywall when a free player is out of daily puzzles.
+    @State private var showPaywall = false
 
     private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
     private var difficulty: Difficulty { Difficulty(rawValue: difficultyRaw) ?? .easy }
@@ -122,7 +127,10 @@ struct GameView: View {
         .animation(.spring(duration: 0.35), value: model.isHighlightMode)
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
-            Button("New Puzzle", role: .destructive) { Task { await model.newGame() } }
+            Button("New Puzzle", role: .destructive) {
+                if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
+                Task { await model.newGame() }
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Your current progress will be lost.")
@@ -167,6 +175,9 @@ struct GameView: View {
             }
         } message: {
             Text("You've solved five puzzles with no hints or wrong cherries. Ready to step up to \(difficulty.harder?.label ?? "a harder level")?")
+        }
+        .sheet(isPresented: $showPaywall) {
+            PaywallView()
         }
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             guard haptics else { return nil }
@@ -253,6 +264,9 @@ struct GameView: View {
         .onChange(of: difficultyRaw) { oldValue, newValue in
             let old = Difficulty(rawValue: oldValue) ?? .easy
             let new = Difficulty(rawValue: newValue) ?? .easy
+            // Switching commits a new puzzle in the target mode — count it against the
+            // free daily allowance (a no-op for Beginner or with Full Access).
+            if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: new) }
             model.setDifficulty(new)
             // Remind the player of the rule only when the piece-per-line count actually
             // changes (i.e. crossing into or out of Beginner).
@@ -262,17 +276,36 @@ struct GameView: View {
         }
     }
 
-    /// Handles a difficulty-picker tap: applies it immediately on a fresh board, or asks
-    /// first when a game is in progress. Committing the change (here or from the dialog)
-    /// updates `difficultyRaw`, whose `onChange` starts the new game.
+    /// Handles a difficulty-picker tap: shows the paywall if the target mode's free
+    /// puzzle is used up, otherwise applies it immediately on a fresh board or asks first
+    /// when a game is in progress. Committing the change (here or from the dialog) updates
+    /// `difficultyRaw`, whose `onChange` starts the new game.
     private func requestDifficulty(_ raw: String) {
         guard raw != difficultyRaw else { return }
+        let target = Difficulty(rawValue: raw) ?? .easy
+        guard canStartNewPuzzle(in: target) else { showPaywall = true; return }
         if model.hasProgress {
             pendingDifficultyRaw = raw
             showSwitchConfirm = true
         } else {
             difficultyRaw = raw
         }
+    }
+
+    // MARK: - Free-tier gate
+
+    /// Whether the player may start a new puzzle in `difficulty` right now — always true
+    /// with Full Access or in Beginner, otherwise limited to one per day per mode.
+    private func canStartNewPuzzle(in difficulty: Difficulty) -> Bool {
+        store.hasFullAccess || FreePuzzleLimiter.hasFreePuzzle(in: difficulty)
+    }
+
+    /// Starts a new puzzle at the current difficulty, or shows the paywall if the daily
+    /// free allowance for this mode is spent. Used by the New button and the win banner.
+    private func requestNewPuzzle() {
+        guard canStartNewPuzzle(in: difficulty) else { showPaywall = true; return }
+        if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
+        Task { await model.newGame() }
     }
 
     // MARK: - Board
@@ -442,7 +475,7 @@ struct GameView: View {
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Button {
-                Task { await model.newGame() }
+                requestNewPuzzle()
             } label: {
                 Label("New Puzzle", systemImage: "arrow.clockwise")
             }
@@ -460,8 +493,11 @@ struct GameView: View {
     private var controls: some View {
         VStack(spacing: 10) {
             HStack(spacing: 10) {
-                ToolButton(title: "New", systemImage: "sparkles", style: .prominent) {
-                    showNewConfirm = true
+                ToolButton(title: "New",
+                           systemImage: canStartNewPuzzle(in: difficulty) ? "sparkles" : "lock.fill",
+                           style: .prominent) {
+                    if canStartNewPuzzle(in: difficulty) { showNewConfirm = true }
+                    else { showPaywall = true }
                 }
                 ToolButton(title: "Hint", systemImage: "lightbulb",
                            isEnabled: model.canHint,
@@ -721,7 +757,7 @@ private struct ToolButton: View {
         model.tap(row: p.row, col: p.col)   // empty -> dot
         model.tap(row: p.row, col: p.col)   // dot -> cherry (+ auto-dots)
     }
-    return GameView(model: model)
+    return GameView(model: model).environment(PurchaseManager())
 }
 
 #Preview("Mark mode") {
@@ -732,5 +768,5 @@ private struct ToolButton: View {
         model.tap(row: p.row, col: p.col)
     }
     model.toggleHighlightMode()
-    return GameView(model: model)
+    return GameView(model: model).environment(PurchaseManager())
 }
