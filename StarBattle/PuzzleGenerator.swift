@@ -49,8 +49,13 @@ nonisolated enum PuzzleGenerator {
     /// simple shapes (extra footholds, so usually more than one way forward) and fewer
     /// depth-2 moments — so Medium skews easy without expensive over-searching.
     static let mediumLowTier2 = 2
-    static let mediumMinSmall = 5   // raised 4→5 so Medium carries more simple shapes
+    static let mediumMinSmall = 4
     static let mediumSampleCap = 4
+
+    /// How strongly region growth is biased toward small, easily-cracked regions. Easy
+    /// uses `.strong` (mostly tiny regions); Medium uses `.moderate` (a handful of
+    /// footholds); Beginner and Hard use `.none` (naturally balanced).
+    enum SmallRegionBias { case none, moderate, strong }
 
     /// An Easy board must contain at least this many "simple" regions — ones of
     /// `easySmallRegionMaxCells` cells or fewer. A small region holding two pieces is
@@ -114,16 +119,17 @@ nonisolated enum PuzzleGenerator {
             }
             onProgress?(attempt, .shaping)
             var built: [[Int]]?
-            // The small-region bias fills the big 10×10 board with lots of little,
-            // easily-cracked regions — it keeps Easy gentle and gives Medium more simple
-            // shapes (extra footholds) too, so its few depth-2 moments sit among friendlier
-            // surroundings. A 5×5 beginner board is already trivial, and biasing just dumps
-            // the leftovers into one oversized region; Hard is meant to be knotty — so both
-            // grow naturally balanced instead.
-            let preferSmall = difficulty == .easy || difficulty == .medium
+            // The small-region bias fills the big 10×10 board with little, easily-cracked
+            // regions. Easy gets a strong dose (mostly tiny regions). Medium gets a gentler
+            // one — some footholds, but far fewer than Easy — so it sits between the very
+            // gentle version and the old, unbiased Medium. A 5×5 beginner board is already
+            // trivial, and biasing just dumps the leftovers into one oversized region; Hard
+            // is meant to be knotty — so both grow naturally balanced instead.
+            let smallBias: SmallRegionBias = difficulty == .easy ? .strong
+                : (difficulty == .medium ? .moderate : .none)
             for _ in 0..<8 {
                 if let candidate = growRegions(solution: solution, size: size, stars: stars,
-                                               rng: &rng, preferSmallRegions: preferSmall) {
+                                               rng: &rng, smallBias: smallBias) {
                     built = candidate
                     break
                 }
@@ -298,7 +304,8 @@ nonisolated enum PuzzleGenerator {
     /// a connecting path can't be routed (caller retries with a fresh pairing).
     static func growRegions(solution: Set<GridPosition>, size: Int, stars: Int,
                             rng: inout SystemRandomNumberGenerator,
-                            preferSmallRegions: Bool = false) -> [[Int]]? {
+                            smallBias: SmallRegionBias = .none) -> [[Int]]? {
+        let preferSmallRegions = smallBias != .none
         // Group the solution's stars into one region per `stars` of them. With one star
         // per region each star is its own seed; with two, pair them by nearest
         // neighbour so a region's stars start out close together.
@@ -367,8 +374,12 @@ nonisolated enum PuzzleGenerator {
             let idsBySize = (0..<groups.count).sorted { sizeOf[$0] < sizeOf[$1] }
             // Aim for more small regions than the minimum we require, so the few that
             // drift larger during refinement still leave enough simple regions behind.
-            let smallCount = min(groups.count - 1,
-                                 max(easyMinSmallRegions + 2, Int(Double(groups.count) * 0.7)))
+            let strongCount = min(groups.count - 1,
+                                  max(easyMinSmallRegions + 2, Int(Double(groups.count) * 0.7)))
+            // Medium aims for noticeably fewer little regions than Easy — enough for a few
+            // footholds, but not so many that the board solves itself.
+            let smallCount = smallBias == .strong ? strongCount
+                                                  : max(0, min(groups.count - 1, strongCount - 3))
             for (rank, id) in idsBySize.enumerated() where rank < smallCount {
                 target[id] = max(sizeOf[id], Int.random(in: 3...5, using: &rng))
             }
