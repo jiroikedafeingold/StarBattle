@@ -95,8 +95,7 @@ nonisolated enum PuzzleGenerator {
                             difficulty: Difficulty = .easy,
                             onProgress: (@Sendable (Int, GenerationStage) -> Void)? = nil) -> Puzzle {
         var rng = SystemRandomNumberGenerator()
-        var fallback: Puzzle?         // any solvable puzzle, regardless of band
-        var nonUniqueFallback: Puzzle?
+        var fallback: Puzzle?         // any *unique* solvable puzzle, regardless of band
         var bestMedium: Puzzle?       // best (simplest-shaped, gentlest) Medium board seen
         var bestMediumScore = Int.min
         var mediumSeen = 0
@@ -158,7 +157,7 @@ nonisolated enum PuzzleGenerator {
 
             let puzzle = Puzzle(size: size, starsPerUnit: stars, regions: regions, solution: solution)
             guard success else {
-                nonUniqueFallback = puzzle
+                // Not unique — discard it; we never ship a multi-solution board.
                 continue
             }
             // Grade as cheaply as the target allows. For Easy only a tier-1 solve
@@ -216,7 +215,12 @@ nonisolated enum PuzzleGenerator {
                 fallback = fallback ?? puzzle            // deeper than depth-2, still playable
             }
         }
-        return bestMedium ?? fallback ?? nonUniqueFallback
+        // Never ship a non-unique board: uniqueness underpins the "exactly one solution /
+        // no luck required" promise and Check (which flags stars against the single stored
+        // solution). Every candidate above is verified-unique, as are the starters — so on
+        // the (astronomically rare) event that no generated board qualifies, we fall
+        // through to a verified-unique starter rather than a multi-solution board.
+        return bestMedium ?? fallback
             ?? Puzzle.starters(for: difficulty).randomElement()
             ?? Puzzle.placeholder(size: size, starsPerUnit: stars)
     }
