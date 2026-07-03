@@ -141,7 +141,7 @@ enum HintEngine {
                     if state[r * n + c] != 1 {
                         return Hint(outcome: .place, position: GridPosition(row: r, col: c),
                                     placesStar: true,
-                                    message: "No move is forced by pure logic from here — so here's \(itemArticle) \(item) from the solution to get you going.")
+                                    message: "This is a tricky spot — here's \(itemArticle) \(item) from the solution to keep you moving.")
                     }
                 }
             }
