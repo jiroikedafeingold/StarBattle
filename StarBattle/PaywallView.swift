@@ -55,6 +55,9 @@ struct PaywallView: View {
             } message: {
                 Text(store.lastError ?? "")
             }
+            // Ensure the product is (re)loaded whenever the paywall opens, so a transient
+            // failure at launch doesn't leave the Buy button stuck.
+            .task { await store.loadProduct() }
         }
     }
 
@@ -92,28 +95,53 @@ struct PaywallView: View {
         .font(.callout)
     }
 
-    private var buyButton: some View {
-        Button {
-            Task {
-                if await store.purchase() { dismiss() }
-            }
-        } label: {
-            Group {
-                if store.isPurchasing {
-                    ProgressView().tint(.white)
-                } else if let product = store.product {
-                    Text("Unlock — \(product.displayPrice)")
-                } else {
-                    Text("Unlock Full Access")
+    /// The purchase area. Never a silently-disabled button: it shows a real Buy button
+    /// once the product loads, a spinner while loading, or a Try Again if the store
+    /// couldn't be reached — so App Review (and users) always have a working control.
+    @ViewBuilder private var buyButton: some View {
+        if let product = store.product {
+            Button {
+                Task { if await store.purchase() { dismiss() } }
+            } label: {
+                Group {
+                    if store.isPurchasing {
+                        ProgressView().tint(.white)
+                    } else {
+                        Text("Unlock — \(product.displayPrice)")
+                    }
                 }
+                .font(.headline)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
             }
-            .font(.headline)
+            .buttonStyle(.borderedProminent)
+            .tint(Color(hex: 0xE51937))
+            .disabled(store.isPurchasing || store.isRestoring)
+        } else if store.isLoadingProduct {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading…").foregroundStyle(.secondary)
+            }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
+        } else {
+            VStack(spacing: 10) {
+                Text("The store is unavailable right now. Please check your connection and try again.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button {
+                    Task { await store.loadProduct() }
+                } label: {
+                    Text("Try Again")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Color(hex: 0xE51937))
+            }
         }
-        .buttonStyle(.borderedProminent)
-        .tint(Color(hex: 0xE51937))
-        .disabled(store.product == nil || store.isPurchasing || store.isRestoring)
     }
 
     private var restoreButton: some View {

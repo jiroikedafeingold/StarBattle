@@ -14,6 +14,8 @@ struct SettingsView: View {
 
     @Environment(PurchaseManager.self) private var store
     @State private var showPaywall = false
+    /// Timestamps of recent taps on the poop piece, for the secret unlock gesture.
+    @State private var poopTaps: [Date] = []
 
     var body: some View {
         NavigationStack {
@@ -59,6 +61,7 @@ struct SettingsView: View {
                     ForEach(PieceStyle.allCases) { style in
                         Button {
                             pieceRaw = style.rawValue
+                            if style == .poop { registerSecretTap() }
                         } label: {
                             HStack(spacing: 14) {
                                 PieceView(style: style, isWrong: false, size: 30)
@@ -94,6 +97,18 @@ struct SettingsView: View {
             .sheet(isPresented: $showPaywall) {
                 PaywallView()
             }
+        }
+    }
+
+    /// Secret comp unlock: three quick taps on the poop piece silently unlock the boards
+    /// (equivalent to the purchase) and remember it across launches. No visible feedback —
+    /// tapping the row still just selects the poop piece as usual.
+    private func registerSecretTap() {
+        let now = Date()
+        poopTaps = (poopTaps + [now]).filter { now.timeIntervalSince($0) < 1.2 }
+        if poopTaps.count >= 3 {
+            poopTaps.removeAll()
+            store.unlockSecretly()
         }
     }
 }

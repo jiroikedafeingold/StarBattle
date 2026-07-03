@@ -139,7 +139,7 @@ struct GameView: View {
         .confirmationDialog("Start a new puzzle?", isPresented: $showNewConfirm,
                             titleVisibility: .visible) {
             Button("New Puzzle", role: .destructive) {
-                if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
+                if !store.isUnlocked { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
                 Task { await model.newGame() }
             }
             Button("Cancel", role: .cancel) {}
@@ -282,7 +282,7 @@ struct GameView: View {
             let new = Difficulty(rawValue: newValue) ?? .easy
             // Switching commits a new puzzle in the target mode — count it against the
             // free daily allowance (a no-op for Beginner or with Full Access).
-            if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: new) }
+            if !store.isUnlocked { FreePuzzleLimiter.recordPuzzle(in: new) }
             model.setDifficulty(new)
             // Remind the player of the rule only when the piece-per-line count actually
             // changes (i.e. crossing into or out of Beginner).
@@ -313,14 +313,14 @@ struct GameView: View {
     /// Whether the player may start a new puzzle in `difficulty` right now — always true
     /// with Full Access or in Beginner, otherwise limited to one per day per mode.
     private func canStartNewPuzzle(in difficulty: Difficulty) -> Bool {
-        store.hasFullAccess || FreePuzzleLimiter.hasFreePuzzle(in: difficulty)
+        store.isUnlocked || FreePuzzleLimiter.hasFreePuzzle(in: difficulty)
     }
 
     /// Starts a new puzzle at the current difficulty, or shows the paywall if the daily
     /// free allowance for this mode is spent. Used by the New button and the win banner.
     private func requestNewPuzzle() {
         guard canStartNewPuzzle(in: difficulty) else { showPaywall = true; return }
-        if !store.hasFullAccess { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
+        if !store.isUnlocked { FreePuzzleLimiter.recordPuzzle(in: difficulty) }
         Task { await model.newGame() }
     }
 
