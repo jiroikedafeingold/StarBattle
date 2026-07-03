@@ -273,18 +273,6 @@
             "value" : "Un acquisto unico per questo Account Apple. La modalità Beginner è sempre gratuita."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uma compra única para esta Conta Apple. O modo Beginner é sempre grátis."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Разовая покупка для этого Apple Account. Режим Beginner всегда бесплатный."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -295,6 +283,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Apple 계정에 대한 일회성 구매입니다. Beginner 모드는 항상 무료입니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma compra única para esta Conta Apple. O modo Beginner é sempre grátis."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разовая покупка для этого Apple Account. Режим Beginner всегда бесплатный."
           }
         },
         "zh-Hans" : {
@@ -1042,18 +1042,6 @@
             "value" : "Cherry Battle Accesso completo"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cherry Battle Acesso total"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cherry Battle: полный доступ"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1064,6 +1052,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cherry Battle 전체 이용권"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Battle Acesso total"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cherry Battle: полный доступ"
           }
         },
         "zh-Hans" : {
@@ -1280,18 +1280,6 @@
             "value" : "Chiudi"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fechar"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Закрыть"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -1302,6 +1290,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "닫기"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть"
           }
         },
         "zh-Hans" : {
@@ -2475,18 +2475,6 @@
             "value" : "Con il gioco gratuito hai un nuovo rompicapo al giorno in Easy, Medium e Hard. Sblocca l’accesso completo per giocarne quanti vuoi."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No modo gratuito você recebe um novo quebra-cabeça por dia em Easy, Medium e Hard. Desbloqueie o acesso total para jogar quantos quiser."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В бесплатной версии доступна одна новая головоломка в день в Easy, Medium и Hard. Откройте полный доступ, чтобы играть сколько угодно."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2497,6 +2485,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "무료 플레이에서는 Easy, Medium, Hard 각각 하루에 새 퍼즐 한 개를 즐길 수 있습니다. 전체 이용권을 잠금 해제하면 원하는 만큼 플레이할 수 있습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No modo gratuito você recebe um novo quebra-cabeça por dia em Easy, Medium e Hard. Desbloqueie o acesso total para jogar quantos quiser."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В бесплатной версии доступна одна новая головоломка в день в Easy, Medium и Hard. Откройте полный доступ, чтобы играть сколько угодно."
           }
         },
         "zh-Hans" : {
@@ -2535,18 +2535,6 @@
             "value" : "Accesso completo"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acesso total"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Полный доступ"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2557,6 +2545,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체 이용권"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acesso total"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полный доступ"
           }
         },
         "zh-Hans" : {
@@ -2595,18 +2595,6 @@
             "value" : "Accesso completo sbloccato"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Acesso total desbloqueado"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Полный доступ открыт"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -2617,6 +2605,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체 이용권 잠금 해제됨"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acesso total desbloqueado"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полный доступ открыт"
           }
         },
         "zh-Hans" : {
@@ -4077,6 +4077,66 @@
         }
       }
     },
+    "Loading…" : {
+      "comment" : "A loading message displayed when the App Store product is loading.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geladen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement…"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caricamento…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carregando…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка…"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "読み込み中…"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "불러오는 중…"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "加载中…"
+          }
+        }
+      }
+    },
     "Look for a row, column or region whose %@ can only fit one way — small or cramped regions are a great first move." : {
       "comment" : "A tip advising the user to start placing pieces in cramped rows, columns, or regions.",
       "extractionState" : "stale",
@@ -5173,18 +5233,6 @@
             "value" : "Nessun limite giornaliero: gioca quando vuoi"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sem limite diário — jogue quando quiser"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Без дневного лимита — играйте когда угодно"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5195,6 +5243,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "일일 제한 없음 — 원할 때 언제든 플레이"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem limite diário — jogue quando quiser"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без дневного лимита — играйте когда угодно"
           }
         },
         "zh-Hans" : {
@@ -5233,18 +5293,6 @@
             "value" : "Nessun acquisto precedente trovato per questo Account Apple."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhuma compra anterior foi encontrada para esta Conta Apple."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Для этого Apple Account предыдущих покупок не найдено."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5255,6 +5303,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "이 Apple 계정에서 이전 구매를 찾을 수 없습니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma compra anterior foi encontrada para esta Conta Apple."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для этого Apple Account предыдущих покупок не найдено."
           }
         },
         "zh-Hans" : {
@@ -5351,18 +5411,6 @@
             "value" : "OK"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ОК"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5373,6 +5421,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "확인"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ОК"
           }
         },
         "zh-Hans" : {
@@ -5529,18 +5589,6 @@
             "value" : "Acquisto unico, tuo per sempre"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compra única, sua para sempre"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Разовая покупка — навсегда ваша"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -5551,6 +5599,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "한 번 구매하면 영원히 소유"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compra única, sua para sempre"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разовая покупка — навсегда ваша"
           }
         },
         "zh-Hans" : {
@@ -6146,18 +6206,6 @@
             "value" : "Acquisto"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Compra"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Покупка"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6168,6 +6216,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "구매"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compra"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покупка"
           }
         },
         "zh-Hans" : {
@@ -6694,18 +6754,6 @@
             "value" : "Ripristina acquisto"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurar compra"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Восстановить покупку"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -6716,6 +6764,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "구매 복원"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar compra"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить покупку"
           }
         },
         "zh-Hans" : {
@@ -8265,18 +8325,6 @@
             "value" : "Grazie per il tuo supporto: goditi rompicapi illimitati in ogni modalità!"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Obrigado pelo seu apoio — aproveite quebra-cabeças ilimitados em todos os modos!"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Спасибо за поддержку — наслаждайтесь неограниченным числом головоломок в любом режиме!"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8287,6 +8335,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "응원해 주셔서 감사합니다 — 모든 모드에서 무제한으로 퍼즐을 즐기세요!"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obrigado pelo seu apoio — aproveite quebra-cabeças ilimitados em todos os modos!"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спасибо за поддержку — наслаждайтесь неограниченным числом головоломок в любом режиме!"
           }
         },
         "zh-Hans" : {
@@ -8389,18 +8449,6 @@
             "value" : "Non è stato possibile completare l’acquisto. Riprova."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Não foi possível concluir a compra. Tente novamente."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось завершить покупку. Повторите попытку."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8411,6 +8459,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "구매를 완료할 수 없습니다. 다시 시도해 주세요."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível concluir a compra. Tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось завершить покупку. Повторите попытку."
           }
         },
         "zh-Hans" : {
@@ -8449,18 +8509,6 @@
             "value" : "L’acquisto non è disponibile al momento. Riprova tra un istante."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "A compra não está disponível no momento. Tente novamente em instantes."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Покупка сейчас недоступна. Повторите попытку через мгновение."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -8473,10 +8521,80 @@
             "value" : "지금은 구매를 사용할 수 없습니다. 잠시 후 다시 시도해 주세요."
           }
         },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A compra não está disponível no momento. Tente novamente em instantes."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Покупка сейчас недоступна. Повторите попытку через мгновение."
+          }
+        },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "目前无法购买。请稍后再试。"
+          }
+        }
+      }
+    },
+    "The store is unavailable right now. Please check your connection and try again." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Store ist gerade nicht verfügbar. Bitte prüfe deine Verbindung und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La tienda no está disponible ahora mismo. Comprueba tu conexión e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La boutique est indisponible pour le moment. Vérifie ta connexion et réessaie."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lo store non è disponibile al momento. Controlla la connessione e riprova."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A loja está indisponível no momento. Verifique sua conexão e tente novamente."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Магазин сейчас недоступен. Проверьте подключение и повторите попытку."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ストアは現在利用できません。接続を確認して、もう一度お試しください。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "지금은 스토어를 사용할 수 없습니다. 연결을 확인한 후 다시 시도해 주세요."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "商店暂时不可用。请检查你的网络连接后重试。"
           }
         }
       }
@@ -9074,6 +9192,66 @@
         }
       }
     },
+    "Try Again" : {
+      "comment" : "A button title that lets the user try again after a failure.",
+      "isCommentAutoGenerated" : true,
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut versuchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Riprova"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tentar novamente"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "もう一度試す"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "다시 시도"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重试"
+          }
+        }
+      }
+    },
     "Tuning the challenge…" : {
       "localizations" : {
         "de" : {
@@ -9575,18 +9753,6 @@
             "value" : "Rompicapi illimitati in Easy, Medium e Hard"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Quebra-cabeças ilimitados em Easy, Medium e Hard"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Неограниченно новых головоломок в Easy, Medium и Hard"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9597,6 +9763,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Easy, Medium, Hard에서 새 퍼즐 무제한"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quebra-cabeças ilimitados em Easy, Medium e Hard"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неограниченно новых головоломок в Easy, Medium и Hard"
           }
         },
         "zh-Hans" : {
@@ -9635,18 +9813,6 @@
             "value" : "Sblocca — %@"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desbloquear — %@"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть — %@"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9657,6 +9823,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "잠금 해제 — %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear — %@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть — %@"
           }
         },
         "zh-Hans" : {
@@ -9695,18 +9873,6 @@
             "value" : "Sblocca accesso completo"
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Desbloquear acesso total"
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть полный доступ"
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -9717,6 +9883,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "전체 이용권 잠금 해제"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desbloquear acesso total"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть полный доступ"
           }
         },
         "zh-Hans" : {
@@ -10246,18 +10424,6 @@
             "value" : "Il tuo acquisto è in attesa di approvazione e verrà sbloccato una volta approvato."
           }
         },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sua compra está aguardando aprovação e será desbloqueada assim que for aprovada."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ваша покупка ожидает одобрения и откроется после подтверждения."
-          }
-        },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
@@ -10268,6 +10434,18 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "구매가 승인 대기 중이며, 승인되면 잠금이 해제됩니다."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua compra está aguardando aprovação e será desbloqueada assim que for aprovada."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваша покупка ожидает одобрения и откроется после подтверждения."
           }
         },
         "zh-Hans" : {
