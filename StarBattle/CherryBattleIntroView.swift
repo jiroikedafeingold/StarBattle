@@ -119,15 +119,30 @@ struct CherryBattleIntroView: View {
         }
     }
 
+    /// The key-art's native aspect (width ÷ height).
+    private static let artAspect: CGFloat = 1408.0 / 3040.0
+
+    /// The rect the whole aspect-fit artwork occupies within `size`: it fills a phone
+    /// almost exactly and sits centred with blank side margins on a wider iPad.
+    private func artFrame(in size: CGSize) -> CGRect {
+        let fitW = min(size.width, size.height * Self.artAspect)
+        let fitH = fitW / Self.artAspect
+        return CGRect(x: (size.width - fitW) / 2, y: (size.height - fitH) / 2,
+                      width: fitW, height: fitH)
+    }
+
     /// The artwork plus the impact effects, transformed by the current pose.
     private func art(geo: GeometryProxy, pose: SplashPose) -> some View {
         let w = geo.size.width, h = geo.size.height
-        let center = CGPoint(x: w * clash.x, y: h * clash.y)
+        let art = artFrame(in: geo.size)
+        // Where the two stars clash, mapped onto the displayed art.
+        let center = CGPoint(x: art.minX + art.width * clash.x,
+                             y: art.minY + art.height * clash.y)
         return ZStack {
-            // The portrait key-art, filling the screen and carrying the battle motion.
+            // The whole key-art, shown aspect-fit (never cropped), carrying the motion.
             Image("SplashArt")
                 .resizable()
-                .scaledToFill()
+                .scaledToFit()
                 .frame(width: w, height: h)
                 .scaleEffect(pose.zoom)
                 .rotationEffect(.degrees(pose.rot), anchor: .center)
@@ -137,12 +152,12 @@ struct CherryBattleIntroView: View {
                 .accessibilityElement()
                 .accessibilityLabel("Star Battle+")
 
-            // Clash flash — a base glow that spikes bright on each hit.
+            // Clash flash — sized to the displayed art, not the whole (wide) screen.
             RadialGradient(
                 gradient: Gradient(colors: [.white.opacity(0.85),
                                             Color(hex: 0xFFC24D, alpha: 0.55), .clear]),
-                center: .center, startRadius: 1, endRadius: w * 0.32)
-                .frame(width: w * 0.8, height: w * 0.8)
+                center: .center, startRadius: 1, endRadius: art.width * 0.32)
+                .frame(width: art.width * 0.8, height: art.width * 0.8)
                 .scaleEffect(0.8 + pose.flash * 0.7)
                 .opacity(0.22 + pose.flash * 0.78)
                 .blendMode(.screen)
@@ -153,8 +168,8 @@ struct CherryBattleIntroView: View {
                 .strokeBorder(
                     LinearGradient(colors: [.white, Color(hex: 0xFF5A5A), Color(hex: 0x4D9BFF)],
                                    startPoint: .leading, endPoint: .trailing),
-                    lineWidth: max(2.5, w * 0.022))
-                .frame(width: w * 0.5, height: w * 0.5)
+                    lineWidth: max(2.5, art.width * 0.022))
+                .frame(width: art.width * 0.5, height: art.width * 0.5)
                 .scaleEffect(0.15 + pose.ring * 1.55)
                 .opacity(pose.ring <= 0.001 ? 0 : Double(1 - pose.ring))
                 .blendMode(.screen)
@@ -165,10 +180,11 @@ struct CherryBattleIntroView: View {
 
     /// A handful of twinkling sparkles scattered around the logo, echoing the art.
     private func sparkleLayer(_ geo: GeometryProxy) -> some View {
-        ForEach(Self.sparkles.indices, id: \.self) { i in
+        let art = artFrame(in: geo.size)
+        return ForEach(Self.sparkles.indices, id: \.self) { i in
             let s = Self.sparkles[i]
             SparkleView(delay: s.delay, sizePt: s.size)
-                .position(x: geo.size.width * s.x, y: geo.size.height * s.y)
+                .position(x: art.minX + art.width * s.x, y: art.minY + art.height * s.y)
         }
         .allowsHitTesting(false)
     }

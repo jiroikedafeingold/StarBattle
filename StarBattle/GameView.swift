@@ -100,8 +100,10 @@ struct GameView: View {
             }
             .frame(height: 150)
             // Lift the control bar off the tab bar so it sits centred in the space
-            // between the board and the bottom of the screen.
-            .padding(.bottom, 28)
+            // between the board and the bottom of the screen. On iPad the screen is far
+            // taller than the board needs, so lift the controls well up rather than
+            // leaving them stranded near the bottom edge.
+            .padding(.bottom, isPadLayout ? 150 : 28)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
