@@ -1,0 +1,9 @@
+{
+  "id" : "ab02fe0c-12cf-4859-84fb-84e0bd83e77c",
+  "targets" : [
+    {
+      "id" : "94104bc4-2be5-4f3b-9fb5-2d48fa7bb5ec",
+      "name" : "StarBattle"
+    }
+  ]
+}
