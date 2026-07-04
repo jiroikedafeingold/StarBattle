@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cherry Battle — a fruity logic puzzle</title>
-<meta name="description" content="Cherry Battle is a fun Star Battle logic puzzle for iPhone and iPad. Place two cherries in every row, column and region — no two may ever touch.">
+<title>Star Battle+ — a fun logic puzzle</title>
+<meta name="description" content="Star Battle+ is a fun Star Battle logic puzzle for iPhone and iPad. Place two stars in every row, column and region — no two may ever touch. Free to play, with a one-time unlock for unlimited puzzles.">
 <style>
   :root {
-    --cherry: #d81e2c;
-    --cherry-deep: #8a0712;
+    --cherry: #e8a417;
+    --cherry-deep: #9a6a05;
     --leaf: #3a9e38;
     --ink: #20151a;
-    --paper: #fff6f4;
+    --paper: #fff9ee;
     --card: #ffffff;
-    --muted: #7c6a70;
+    --muted: #7c6f5a;
   }
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -21,7 +21,7 @@
     margin: 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     color: var(--ink);
-    background: radial-gradient(1200px 600px at 50% -200px, #ffe3df, var(--paper));
+    background: radial-gradient(1200px 600px at 50% -200px, #ffe9bf, var(--paper));
     line-height: 1.6;
   }
   .wrap { max-width: 960px; margin: 0 auto; padding: 0 24px; }
@@ -29,7 +29,7 @@
   header { text-align: center; padding: 72px 0 40px; }
   .icon {
     width: 132px; height: 132px; border-radius: 29%;
-    box-shadow: 0 18px 40px rgba(138,7,18,.28);
+    box-shadow: 0 18px 40px rgba(154,106,5,.28);
     display: block; margin: 0 auto 24px;
   }
   h1 {
@@ -40,13 +40,13 @@
 
   .cta {
     display: inline-block; margin-top: 28px; padding: 14px 28px;
-    background: linear-gradient(180deg, #ef3b46, var(--cherry));
-    color: #fff; text-decoration: none; font-weight: 600; font-size: 1.05rem;
-    border-radius: 999px; box-shadow: 0 10px 24px rgba(216,30,44,.35);
+    background: linear-gradient(180deg, #f7c948, var(--cherry));
+    color: #3a2a00; text-decoration: none; font-weight: 700; font-size: 1.05rem;
+    border-radius: 999px; box-shadow: 0 10px 24px rgba(232,164,23,.35);
     transition: transform .12s ease, box-shadow .12s ease;
   }
-  .cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(216,30,44,.45); }
-  .cta small { display:block; font-weight: 400; opacity: .85; font-size: .8rem; }
+  .cta:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(232,164,23,.45); }
+  .cta small { display:block; font-weight: 500; opacity: .85; font-size: .8rem; }
 
   section { padding: 48px 0; }
   .hero-img {
@@ -59,11 +59,19 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; }
   .card {
     background: var(--card); border-radius: 18px; padding: 24px;
-    box-shadow: 0 8px 22px rgba(32,21,26,.07); border: 1px solid #f4dcd8;
+    box-shadow: 0 8px 22px rgba(32,21,26,.07); border: 1px solid #f0e2c4;
   }
   .card h3 { margin: 0 0 8px; font-size: 1.15rem; }
   .card p { margin: 0; color: var(--muted); }
   .emoji { font-size: 1.6rem; }
+
+  .price {
+    max-width: 620px; margin: 0 auto; text-align: center;
+    background: var(--card); border: 1px solid #f0e2c4; border-radius: 20px;
+    padding: 32px 28px; box-shadow: 0 10px 26px rgba(32,21,26,.08);
+  }
+  .price .big { font-size: 2rem; font-weight: 800; margin: 6px 0; }
+  .price p { color: var(--muted); margin: 8px auto 0; max-width: 46ch; }
 
   ol.rules { max-width: 620px; margin: 0 auto; padding-left: 1.2em; }
   ol.rules li { margin-bottom: 18px; }
@@ -85,16 +93,16 @@
 <body>
   <header>
     <div class="wrap">
-      <img class="icon" src="icon.png" alt="Cherry Battle app icon">
-      <h1>Cherry Battle</h1>
-      <p class="tagline">A fun logic puzzle. Fill the board with cherries — but never let two touch.</p>
-      <a class="cta" href="#how">Learn how to play<small>iPhone &amp; iPad · iOS 17+</small></a>
+      <img class="icon" src="icon.png" alt="Star Battle+ app icon">
+      <h1>Star Battle+</h1>
+      <p class="tagline">A fun logic puzzle. Fill the board with stars — but never let two touch.</p>
+      <a class="cta" href="#how">Learn how to play<small>iPhone &amp; iPad · iOS 17+ · Free to play</small></a>
     </div>
   </header>
 
   <section>
     <div class="wrap">
-      <img class="hero-img" src="board.png" alt="A solved Cherry Battle board">
+      <img class="hero-img" src="board.png" alt="A solved Star Battle+ board">
     </div>
   </section>
 
@@ -102,15 +110,15 @@
     <div class="wrap">
       <h2>How to play</h2>
       <ol class="rules">
-        <li>Every row, every column and every coloured region holds exactly <strong>two cherries</strong>.
+        <li>Every row, every column and every coloured region holds exactly <strong>two stars</strong>.
           <img class="rule-pair" src="rule-1.png"
-               alt="Two cherries in a line with a gap; a coloured region holding its two cherries.">
+               alt="Two stars in a line with a gap; a coloured region holding its two stars.">
         </li>
-        <li>Two cherries may <strong>never touch</strong> — not horizontally, vertically, or even diagonally.
+        <li>Two stars may <strong>never touch</strong> — not horizontally, vertically, or even diagonally.
           <img class="rule-pair" src="rule-2.png"
-               alt="A cherry blocks all eight neighbouring squares; two cherries touching at a corner is not allowed.">
+               alt="A star blocks all eight neighbouring squares; two stars touching at a corner is not allowed.">
         </li>
-        <li>Tap a cell to cycle it: empty → a dot (your "no cherry here" note) → a 🍒 cherry → empty again.</li>
+        <li>Tap a cell to cycle it: empty → a dot (your “no star here” note) → a ⭐️ star → empty again.</li>
         <li>Every puzzle has exactly one solution, and most can be cracked by pure logic — no guessing required.</li>
       </ol>
     </div>
@@ -120,14 +128,27 @@
     <div class="wrap">
       <h2>Features</h2>
       <div class="grid">
-        <div class="card"><div class="emoji">🍒</div><h3>Endless puzzles</h3><p>A fresh, uniquely-solvable board whenever you want one — generated on device, ready instantly.</p></div>
-        <div class="card"><div class="emoji">🎚️</div><h3>Three difficulties</h3><p>Easy, Medium and Hard, graded by how much step-by-step logic a solve really needs.</p></div>
+        <div class="card"><div class="emoji">⭐️</div><h3>Endless puzzles</h3><p>A fresh, uniquely-solvable board whenever you want one — generated on device, ready instantly.</p></div>
+        <div class="card"><div class="emoji">🎚️</div><h3>Four difficulties</h3><p>Beginner (a gentle 5×5), plus Easy, Medium and Hard, graded by how much step-by-step logic a solve really needs.</p></div>
         <div class="card"><div class="emoji">💡</div><h3>Hints that teach</h3><p>Stuck? A hint places the next square logic forces — and explains exactly why.</p></div>
-        <div class="card"><div class="emoji">✏️</div><h3>Mark mode</h3><p>Try a path on a scratch layer: place guesses, and if they hold up tap “Do it” to commit them.</p></div>
-        <div class="card"><div class="emoji">📊</div><h3>Track your stats</h3><p>Games solved, solve rate, best &amp; average times, hints used and bad cherries caught.</p></div>
-        <div class="card"><div class="emoji">🎨</div><h3>Make it yours</h3><p>Light or dark, a quiet timer, and a piece you pick — cherry, star, queen, diamond or heart.</p></div>
+        <div class="card"><div class="emoji">✏️</div><h3>Mark mode</h3><p>Try a “what if” on a scratch layer: pencil in a star and follow the logic, then commit it if it holds.</p></div>
+        <div class="card"><div class="emoji">📊</div><h3>Track your stats</h3><p>Games solved, solve rate, best &amp; average times, hints used and mistakes caught.</p></div>
+        <div class="card"><div class="emoji">🎨</div><h3>Make it yours</h3><p>A sleek dark theme, a quiet timer, and a playing piece you pick — star, cherry, robot, unicorn and more.</p></div>
         <div class="card"><div class="emoji">📱</div><h3>iPhone &amp; iPad</h3><p>An adaptive board that fills the screen on any device, in portrait or landscape.</p></div>
-        <div class="card"><div class="emoji">🎉</div><h3>Sweet victory</h3><p>Solve it and the board erupts in falling cherries and a celebratory rumble of haptics.</p></div>
+        <div class="card"><div class="emoji">🎉</div><h3>Sweet victory</h3><p>Solve it and the board bursts into a shower of stars and a celebratory rumble of haptics.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="price">
+    <div class="wrap">
+      <h2>Free to play</h2>
+      <div class="price">
+        <p>Beginner mode is <strong>always free and unlimited</strong>. Easy, Medium and Hard give you a
+        fresh puzzle to start <strong>every day</strong> at no cost.</p>
+        <div class="big">Unlimited puzzles — $1.99</div>
+        <p>Love it? A single one-time purchase unlocks <strong>unlimited new puzzles in every mode, forever</strong>.
+        No subscriptions, no ads, no accounts.</p>
       </div>
     </div>
   </section>
@@ -136,27 +157,28 @@
     <div class="wrap">
       <h2>Privacy Policy</h2>
       <div class="policy">
-        <p>Cherry Battle is built to respect your privacy. It does <strong>not collect, track, or share any personal information</strong>.</p>
+        <p>Star Battle+ is built to respect your privacy. It does <strong>not collect, track, or share any personal information</strong>.</p>
         <ul>
           <li><strong>No data collection.</strong> There are no accounts and no sign-in, and the app contains no analytics or advertising. It does not gather your name, email, contacts, location, or device identifiers.</li>
           <li><strong>Everything stays on your device.</strong> Your puzzles, progress, statistics, and settings are stored only on your device. Boards are generated on device, so the app works fully offline and sends nothing to us or anyone else.</li>
-          <li><strong>No third parties.</strong> Cherry Battle includes no third-party SDKs, trackers, or advertising networks.</li>
+          <li><strong>Purchases.</strong> The optional unlock is handled entirely by Apple’s App Store / StoreKit. We never see or store your payment details.</li>
+          <li><strong>No third parties.</strong> Star Battle+ includes no third-party SDKs, trackers, or advertising networks.</li>
           <li><strong>Suitable for all ages.</strong> The app collects no data from anyone, including children.</li>
           <li><strong>Deleting your data.</strong> Removing the app deletes all of its data from your device.</li>
         </ul>
         <p>If this policy ever changes, we'll update this page. Questions? Email
           <a href="mailto:apps@feingold5.com">apps@feingold5.com</a>.</p>
-        <p class="updated">Last updated: June 26, 2026</p>
+        <p class="updated">Last updated: July 4, 2026</p>
       </div>
     </div>
   </section>
 
   <footer>
     <div class="wrap">
-      <p class="credit">Cherry Battle is a cherry-themed take on <strong>Star Battle</strong>, the classic
+      <p class="credit">Star Battle+ is a friendly take on <strong>Star Battle</strong>, the classic
       logic puzzle invented by <strong>Hans Eendebak</strong>. All credit for the original
       puzzle design goes to him.</p>
-      Made with 🍒 &amp; SwiftUI. &nbsp;·&nbsp;
+      Made with ⭐️ &amp; SwiftUI. &nbsp;·&nbsp;
       <a href="#privacy">Privacy Policy</a> &nbsp;·&nbsp;
       <a href="https://github.com/jiroikedafeingold/StarBattle">Source on GitHub</a>
     </div>
