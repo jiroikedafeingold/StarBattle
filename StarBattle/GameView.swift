@@ -102,15 +102,17 @@ struct GameView: View {
                 }
             }
             .frame(height: 150)
-            // Sit the control bar near the bottom of the screen (there's no bottom tab
-            // bar on iPad — it floats at the top), leaving the board all the room above.
-            .padding(.bottom, isPadLayout ? 16 : 28)
+            // On iPad, add a little breathing room above the controls (a gap under the
+            // board) and sit them low near the bottom edge (the tab bar floats at the
+            // top, so there's nothing to clear down here).
+            .padding(.top, isPadLayout ? 28 : 0)
+            .padding(.bottom, isPadLayout ? 6 : 28)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
-        // Tuck the header just under the iPad's floating top tab bar (which otherwise
-        // overlaps it) without leaving a large gap.
-        .safeAreaPadding(.top, isPadLayout ? 20 : 0)
+        // Keep the header just clear of the iPad's floating top tab bar while sitting it
+        // close to the top of the screen.
+        .safeAreaPadding(.top, isPadLayout ? 6 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppBackground().ignoresSafeArea())
         .overlay {
