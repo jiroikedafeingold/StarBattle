@@ -631,34 +631,114 @@ struct AppBackground: View {
 /// metallic gradient and carries a crisp bottom edge plus a soft drop shadow, so it reads
 /// with real depth and definition rather than flat lettering.
 struct GameTitle: View {
-    private static let gold = LinearGradient(
-        colors: [Color(hex: 0xFFE7A0), Color(hex: 0xF2B01E), Color(hex: 0xC6820A)],
-        startPoint: .top, endPoint: .bottom)
-    private static let blue = LinearGradient(
-        colors: [Color(hex: 0x7AA6F7), Color(hex: 0x2E6BE5), Color(hex: 0x1B47B0)],
-        startPoint: .top, endPoint: .bottom)
-
     var body: some View {
-        HStack(spacing: 0) {
-            word("STAR ", Self.gold)
-            word("BATTLE", Self.blue)
-            word("+", Self.gold)
+        HStack(spacing: 2) {
+            Word3D(text: "STAR ", palette: .gold)
+            Word3D(text: "BATTLE", palette: .blue)
+            Word3D(text: "+", palette: .gold)
         }
-        .font(.system(size: 34, weight: .heavy, design: .rounded))
+        .font(.system(size: 36, weight: .black, design: .rounded))
         .tracking(1)
         .minimumScaleFactor(0.7)
         .lineLimit(1)
-        // A tight dark edge just below reads as an emboss; the softer shadow adds depth.
-        .shadow(color: .black.opacity(0.55), radius: 0.5, x: 0, y: 1)
-        .shadow(color: .black.opacity(0.38), radius: 5, x: 0, y: 3)
+        // Grounds the whole extruded block with a soft cast shadow.
+        .shadow(color: .black.opacity(0.45), radius: 6, x: 0, y: 5)
         .accessibilityElement()
         .accessibilityLabel("Star Battle+")
         .accessibilityAddTraits(.isHeader)
     }
+}
 
-    private func word(_ s: String, _ fill: LinearGradient) -> some View {
-        Text(verbatim: s).foregroundStyle(fill)
+/// One word of the title rendered as chunky, glossy 3D lettering: a stack of colour
+/// copies stepped down-right forms the extruded side walls, a dark keyline sharpens the
+/// edge, and a top-lit metal gradient (with a mid-glyph reflection break) plus a
+/// specular sliver give the front face its shine.
+private struct Word3D: View {
+    let text: String
+    let palette: TitlePalette
+
+    /// How many stacked copies build the side wall, and the per-copy step.
+    private let depth = 6
+    private let step: CGFloat = 1.1
+
+    var body: some View {
+        ZStack {
+            // Extruded side walls — farthest copy first so nearer ones sit on top.
+            ForEach(Array((1...depth).reversed()), id: \.self) { i in
+                let t = Double(i) / Double(depth)
+                glyphs
+                    .foregroundStyle(palette.edge.opacity(0.55 + 0.45 * (1 - t)))
+                    .offset(x: CGFloat(i) * step, y: CGFloat(i) * step)
+            }
+
+            // A crisp dark keyline hugging the front face (8-way outline).
+            ForEach(TitlePalette.outlineOffsets, id: \.self) { o in
+                glyphs
+                    .foregroundStyle(palette.outline)
+                    .offset(x: o.width, y: o.height)
+            }
+
+            // Glossy top-lit front face.
+            glyphs.foregroundStyle(palette.face)
+
+            // A bright specular sliver skimming the top of the letters.
+            glyphs
+                .foregroundStyle(palette.gloss)
+                .mask(
+                    LinearGradient(
+                        stops: [.init(color: .white, location: 0),
+                                .init(color: .white, location: 0.28),
+                                .init(color: .clear, location: 0.5)],
+                        startPoint: .top, endPoint: .bottom)
+                )
+        }
     }
+
+    private var glyphs: some View { Text(verbatim: text) }
+}
+
+/// The colours describing one title word's 3D finish.
+private struct TitlePalette {
+    /// Top-lit metal front face, with a reflection break just past the midline.
+    let face: LinearGradient
+    /// The extruded side-wall colour.
+    let edge: Color
+    /// The keyline hugging the front face.
+    let outline: Color
+    /// The specular highlight skimmed across the top of the glyphs.
+    let gloss: LinearGradient
+
+    /// Eight unit offsets used to build the outline.
+    static let outlineOffsets: [CGSize] = [
+        CGSize(width: -1, height: 0), CGSize(width: 1, height: 0),
+        CGSize(width: 0, height: -1), CGSize(width: 0, height: 1),
+        CGSize(width: -1, height: -1), CGSize(width: 1, height: -1),
+        CGSize(width: -1, height: 1), CGSize(width: 1, height: 1),
+    ]
+
+    static let gold = TitlePalette(
+        face: LinearGradient(stops: [
+            .init(color: Color(hex: 0xFFF6CE), location: 0.00),
+            .init(color: Color(hex: 0xFCD874), location: 0.42),
+            .init(color: Color(hex: 0xF3A81A), location: 0.50),   // reflection break
+            .init(color: Color(hex: 0xFFD86B), location: 0.56),
+            .init(color: Color(hex: 0xC6820A), location: 1.00),
+        ], startPoint: .top, endPoint: .bottom),
+        edge: Color(hex: 0x5C3A05),
+        outline: Color(hex: 0x2E1D02),
+        gloss: LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .bottom))
+
+    static let blue = TitlePalette(
+        face: LinearGradient(stops: [
+            .init(color: Color(hex: 0xE3EEFF), location: 0.00),
+            .init(color: Color(hex: 0x9CC0FF), location: 0.42),
+            .init(color: Color(hex: 0x2E6BE5), location: 0.50),   // reflection break
+            .init(color: Color(hex: 0x6FA0F5), location: 0.56),
+            .init(color: Color(hex: 0x143A96), location: 1.00),
+        ], startPoint: .top, endPoint: .bottom),
+        edge: Color(hex: 0x102A66),
+        outline: Color(hex: 0x05112E),
+        gloss: LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .bottom))
 }
 
 /// The hint explanation, shown beside (never over) the highlighted square. Tapping
