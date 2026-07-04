@@ -84,7 +84,10 @@ struct GameView: View {
             // the controls keep their natural height, they can never clip off-screen —
             // this is what previously happened on iPad.
             GeometryReader { geo in
-                let side = max(140, min(geo.size.width, geo.size.height, 600))
+                // On iPhone the board is capped so it never dominates; on iPad it grows
+                // to fill the whole space between the header and the bottom controls.
+                let cap: CGFloat = isPadLayout ? 20_000 : 600
+                let side = max(140, min(geo.size.width, geo.size.height, cap))
                 board(side: side)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)   // centred
             }
@@ -99,17 +102,15 @@ struct GameView: View {
                 }
             }
             .frame(height: 150)
-            // Lift the control bar off the tab bar so it sits centred in the space
-            // between the board and the bottom of the screen. On iPad the screen is far
-            // taller than the board needs, so lift the controls well up rather than
-            // leaving them stranded near the bottom edge.
-            .padding(.bottom, isPadLayout ? 150 : 28)
+            // Sit the control bar near the bottom of the screen (there's no bottom tab
+            // bar on iPad — it floats at the top), leaving the board all the room above.
+            .padding(.bottom, isPadLayout ? 16 : 28)
         }
         .padding(.horizontal)
         .padding(.vertical, 10)
-        // Keep the header (title + difficulty options) clear of the iPad's floating
-        // top tab bar, which otherwise overlaps them.
-        .safeAreaPadding(.top, isPadLayout ? 44 : 0)
+        // Tuck the header just under the iPad's floating top tab bar (which otherwise
+        // overlaps it) without leaving a large gap.
+        .safeAreaPadding(.top, isPadLayout ? 20 : 0)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(AppBackground().ignoresSafeArea())
         .overlay {
