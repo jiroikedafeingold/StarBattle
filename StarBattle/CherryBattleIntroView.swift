@@ -44,8 +44,19 @@ struct CherryBattleIntroView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                // Deep blue base matching the art's border, in case of any letterbox.
-                Color(hex: 0x12275C)
+                // A deep-space gradient behind the art: dark navy at the top and bottom
+                // fading to a richer blue through the middle (where the clash sits), so
+                // the letterbox margins on a wide iPad read as a continuation of the
+                // starfield rather than a flat slab.
+                LinearGradient(
+                    stops: [
+                        .init(color: Color(hex: 0x0A1230), location: 0.0),
+                        .init(color: Color(hex: 0x1E3370), location: 0.30),
+                        .init(color: Color(hex: 0x2A47A0), location: 0.46),
+                        .init(color: Color(hex: 0x172A63), location: 0.66),
+                        .init(color: Color(hex: 0x0A1230), location: 1.0),
+                    ],
+                    startPoint: .top, endPoint: .bottom)
 
                 KeyframeAnimator(initialValue: SplashPose(), repeating: true) { pose in
                     art(geo: geo, pose: pose)
