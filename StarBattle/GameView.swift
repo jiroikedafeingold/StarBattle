@@ -46,7 +46,7 @@ struct GameView: View {
         _model = State(initialValue: model ?? GameViewModel())
     }
 
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
     @AppStorage(SettingsKey.haptics) private var haptics = true
@@ -626,18 +626,33 @@ struct AppBackground: View {
     ])
 }
 
-/// The game title: "CHERRY BATTLE" in all caps to match the splash logo — a cherry-red
-/// "CHERRY" and a royal-blue "BATTLE" in a heavy rounded face. Kept clean and flat for
-/// in-app chrome.
+/// The game title: "STAR BATTLE+" in all caps to echo the star key-art — a golden
+/// "STAR", a royal-blue "BATTLE" and a golden "+", in a heavy rounded face with a soft
+/// drop shadow and a hairline highlight for a classy, slightly embossed feel.
 struct GameTitle: View {
+    private static let gold = Color(hex: 0xF2B01E)
+    private static let goldLight = Color(hex: 0xFFD873)
+    private static let blue = Color(hex: 0x2E6BE5)
+
     var body: some View {
-        (Text(verbatim: "CHERRY ").foregroundColor(Color(hex: 0xE51937))
-         + Text(verbatim: "BATTLE").foregroundColor(Color(hex: 0x2E6BE5)))
+        title
             .font(.system(size: 34, weight: .heavy, design: .rounded))
+            .tracking(1)
             .minimumScaleFactor(0.7)
             .lineLimit(1)
-            .accessibilityLabel("Cherry Battle")
+            // A faint light edge above and a soft shadow below reads as a subtle emboss.
+            .overlay { title.font(.system(size: 34, weight: .heavy, design: .rounded))
+                .tracking(1).foregroundStyle(.white.opacity(0.18)).offset(y: -0.7)
+                .blendMode(.screen).allowsHitTesting(false) }
+            .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 2)
+            .accessibilityLabel("Star Battle+")
             .accessibilityAddTraits(.isHeader)
+    }
+
+    private var title: Text {
+        Text(verbatim: "STAR ").foregroundColor(Self.gold)
+        + Text(verbatim: "BATTLE").foregroundColor(Self.blue)
+        + Text(verbatim: "+").foregroundColor(Self.goldLight)
     }
 }
 

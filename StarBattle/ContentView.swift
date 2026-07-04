@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// The app's root: a Play / Stats / Help / Settings tab bar, the app-wide light/dark
-/// appearance, a first-launch onboarding cover, and saving the game when the app is
-/// backgrounded.
+/// The app's root: a Play / Stats / Help / Settings tab bar, a first-launch onboarding
+/// cover, and saving the game when the app is backgrounded. The app is dark-only, so the
+/// whole UI is locked to the dark colour scheme.
 struct ContentView: View {
-    @AppStorage(SettingsKey.appearance) private var appearance = AppearanceMode.dark.rawValue
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
 
     @State private var model = GameViewModel()
@@ -13,10 +12,6 @@ struct ContentView: View {
     @State private var store = PurchaseManager()
     @State private var showOnboarding = false
     @Environment(\.scenePhase) private var scenePhase
-
-    private var appearanceMode: AppearanceMode {
-        AppearanceMode(rawValue: appearance) ?? .dark
-    }
 
     var body: some View {
         TabView {
@@ -33,7 +28,7 @@ struct ContentView: View {
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .environment(store)
-        .preferredColorScheme(appearanceMode.colorScheme)
+        .preferredColorScheme(.dark)
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView()
         }

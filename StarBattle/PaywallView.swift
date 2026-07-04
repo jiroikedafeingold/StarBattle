@@ -14,7 +14,7 @@ struct PaywallView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     hero
-                    Text("Cherry Battle Full Access")
+                    Text("Star Battle+ Full Access")
                         .font(.title.bold())
                         .multilineTextAlignment(.center)
 
@@ -71,7 +71,7 @@ struct PaywallView: View {
             .frame(maxWidth: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(.white.opacity(0.12)))
-            .shadow(color: Color(hex: 0xE51937, alpha: 0.35), radius: 16, y: 6)
+            .shadow(color: Color(hex: 0xF2B01E, alpha: 0.40), radius: 16, y: 6)
     }
 
     private var features: some View {
@@ -86,7 +86,7 @@ struct PaywallView: View {
     private func feature(_ symbol: String, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Image(systemName: symbol)
-                .foregroundStyle(Color(hex: 0xE51937))
+                .foregroundStyle(Color(hex: 0xF2B01E))
                 .frame(width: 26)
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)
@@ -115,7 +115,7 @@ struct PaywallView: View {
                 .padding(.vertical, 14)
             }
             .buttonStyle(.borderedProminent)
-            .tint(Color(hex: 0xE51937))
+            .tint(Color(hex: 0x2E6BE5))
             .disabled(store.isPurchasing || store.isRestoring)
         } else if store.isLoadingProduct {
             HStack(spacing: 10) {
@@ -139,7 +139,7 @@ struct PaywallView: View {
                         .padding(.vertical, 14)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(Color(hex: 0xE51937))
+                .tint(Color(hex: 0x2E6BE5))
             }
         }
     }
