@@ -13,10 +13,75 @@ struct PieceView: View {
         switch style {
         case .cherry:
             CherryView(isWrong: isWrong, size: size)
+        case .star:
+            StarView(isWrong: isWrong, size: size)
         default:
             EmojiPiece(style: style, isWrong: isWrong, size: size)
         }
     }
+}
+
+/// A glossy, dimensional gold star — the default piece — drawn in a Canvas so it stays
+/// crisp at any size, with a top-lit metallic gradient, a dark rim for definition, and a
+/// specular shine. A blue finish marks a star flagged wrong by "Check".
+struct StarView: View {
+    let isWrong: Bool
+    let size: CGFloat
+
+    var body: some View {
+        let p = isWrong ? Self.wrong : Self.gold
+        Canvas { ctx, sz in
+            let s = min(sz.width, sz.height)
+            let c = CGPoint(x: s / 2, y: s * 0.53)   // nudged down — stars read top-heavy
+            let path = Self.star(center: c, outer: s * 0.47, inner: s * 0.198, points: 5)
+
+            ctx.fill(path, with: .linearGradient(
+                Gradient(colors: [p.bright, p.mid, p.deep]),
+                startPoint: CGPoint(x: c.x, y: c.y - s * 0.47),
+                endPoint: CGPoint(x: c.x, y: c.y + s * 0.47)))
+
+            ctx.stroke(path, with: .color(p.outline),
+                       style: StrokeStyle(lineWidth: max(0.6, s * 0.028), lineJoin: .round))
+
+            // A soft specular highlight near the top point.
+            let shine = Path(ellipseIn: CGRect(x: c.x - s * 0.12, y: c.y - s * 0.33,
+                                               width: s * 0.22, height: s * 0.15))
+            ctx.fill(shine, with: .color(.white.opacity(0.5)))
+        }
+        .frame(width: size, height: size)
+        .shadow(color: p.glow.opacity(0.45), radius: size * 0.06)
+        .shadow(color: .black.opacity(0.22), radius: size * 0.03, x: 0, y: size * 0.02)
+    }
+
+    /// A closed `points`-pointed star path, first point at the top.
+    private static func star(center c: CGPoint, outer R: CGFloat, inner r: CGFloat, points: Int) -> Path {
+        var path = Path()
+        let step = Double.pi / Double(points)
+        var angle = -Double.pi / 2
+        for i in 0..<(points * 2) {
+            let rad = i.isMultiple(of: 2) ? R : r
+            let pt = CGPoint(x: c.x + CGFloat(cos(angle)) * rad,
+                             y: c.y + CGFloat(sin(angle)) * rad)
+            if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+            angle += step
+        }
+        path.closeSubpath()
+        return path
+    }
+
+    private struct Palette { let bright, mid, deep, outline, glow: Color }
+    private static let gold = Palette(
+        bright:  Color(red: 1.00, green: 0.92, blue: 0.66),
+        mid:     Color(red: 0.96, green: 0.70, blue: 0.12),
+        deep:    Color(red: 0.72, green: 0.47, blue: 0.04),
+        outline: Color(red: 0.46, green: 0.30, blue: 0.02),
+        glow:    Color(red: 1.00, green: 0.80, blue: 0.20))
+    private static let wrong = Palette(
+        bright:  Color(red: 0.80, green: 0.88, blue: 1.00),
+        mid:     Color(red: 0.24, green: 0.48, blue: 0.92),
+        deep:    Color(red: 0.10, green: 0.24, blue: 0.62),
+        outline: Color(red: 0.06, green: 0.14, blue: 0.42),
+        glow:    Color(red: 0.35, green: 0.55, blue: 1.00))
 }
 
 /// A bright colour-emoji piece (star, heart, dog, ladybug…) with a soft drop shadow

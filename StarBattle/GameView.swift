@@ -477,7 +477,7 @@ struct GameView: View {
     private var celebration: some View {
         ZStack {
             if winCelebration {
-                CelebrationView()
+                CelebrationView(piece: pieceStyle)
             }
             solvedBanner
         }
@@ -627,32 +627,37 @@ struct AppBackground: View {
 }
 
 /// The game title: "STAR BATTLE+" in all caps to echo the star key-art — a golden
-/// "STAR", a royal-blue "BATTLE" and a golden "+", in a heavy rounded face with a soft
-/// drop shadow and a hairline highlight for a classy, slightly embossed feel.
+/// "STAR", a royal-blue "BATTLE" and a golden "+". Each word is filled with a top-lit
+/// metallic gradient and carries a crisp bottom edge plus a soft drop shadow, so it reads
+/// with real depth and definition rather than flat lettering.
 struct GameTitle: View {
-    private static let gold = Color(hex: 0xF2B01E)
-    private static let goldLight = Color(hex: 0xFFD873)
-    private static let blue = Color(hex: 0x2E6BE5)
+    private static let gold = LinearGradient(
+        colors: [Color(hex: 0xFFE7A0), Color(hex: 0xF2B01E), Color(hex: 0xC6820A)],
+        startPoint: .top, endPoint: .bottom)
+    private static let blue = LinearGradient(
+        colors: [Color(hex: 0x7AA6F7), Color(hex: 0x2E6BE5), Color(hex: 0x1B47B0)],
+        startPoint: .top, endPoint: .bottom)
 
     var body: some View {
-        title
-            .font(.system(size: 34, weight: .heavy, design: .rounded))
-            .tracking(1)
-            .minimumScaleFactor(0.7)
-            .lineLimit(1)
-            // A faint light edge above and a soft shadow below reads as a subtle emboss.
-            .overlay { title.font(.system(size: 34, weight: .heavy, design: .rounded))
-                .tracking(1).foregroundStyle(.white.opacity(0.18)).offset(y: -0.7)
-                .blendMode(.screen).allowsHitTesting(false) }
-            .shadow(color: .black.opacity(0.35), radius: 3, x: 0, y: 2)
-            .accessibilityLabel("Star Battle+")
-            .accessibilityAddTraits(.isHeader)
+        HStack(spacing: 0) {
+            word("STAR ", Self.gold)
+            word("BATTLE", Self.blue)
+            word("+", Self.gold)
+        }
+        .font(.system(size: 34, weight: .heavy, design: .rounded))
+        .tracking(1)
+        .minimumScaleFactor(0.7)
+        .lineLimit(1)
+        // A tight dark edge just below reads as an emboss; the softer shadow adds depth.
+        .shadow(color: .black.opacity(0.55), radius: 0.5, x: 0, y: 1)
+        .shadow(color: .black.opacity(0.38), radius: 5, x: 0, y: 3)
+        .accessibilityElement()
+        .accessibilityLabel("Star Battle+")
+        .accessibilityAddTraits(.isHeader)
     }
 
-    private var title: Text {
-        Text(verbatim: "STAR ").foregroundColor(Self.gold)
-        + Text(verbatim: "BATTLE").foregroundColor(Self.blue)
-        + Text(verbatim: "+").foregroundColor(Self.goldLight)
+    private func word(_ s: String, _ fill: LinearGradient) -> some View {
+        Text(verbatim: s).foregroundStyle(fill)
     }
 }
 

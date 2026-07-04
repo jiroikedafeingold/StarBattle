@@ -1,9 +1,13 @@
 import SwiftUI
 
-/// A full-screen burst of falling confetti — cherries, dots and ribbons in festive
-/// colours — used to celebrate a solved puzzle.
+/// A full-screen burst of falling confetti — the player's chosen piece, dots and ribbons
+/// in festive colours — used to celebrate a solved puzzle.
 struct CelebrationView: View {
-    private let pieces = ConfettiPiece.make(count: 120)
+    private let pieces: [ConfettiPiece]
+
+    init(piece: PieceStyle = .star) {
+        pieces = ConfettiPiece.make(count: 120, emoji: piece.emoji)
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -50,13 +54,14 @@ private struct ConfettiPiece: Identifiable {
     let duration: Double    // seconds for one top-to-bottom fall
     let phase: Double       // 0…1 starting offset so pieces don't fall in lockstep
     let kind: Kind
+    let emoji: String       // the chosen piece's glyph, for `.piece` confetti
 
-    enum Kind { case cherry, circle, ribbon }
+    enum Kind { case piece, circle, ribbon }
 
     @ViewBuilder var shape: some View {
         switch kind {
-        case .cherry:
-            Text("🍒")
+        case .piece:
+            Text(emoji)
                 .font(.system(size: size))
         case .circle:
             Circle()
@@ -69,12 +74,12 @@ private struct ConfettiPiece: Identifiable {
         }
     }
 
-    static func make(count: Int) -> [ConfettiPiece] {
+    static func make(count: Int, emoji: String) -> [ConfettiPiece] {
         let colors: [Color] = [
             .red, .orange, .yellow, .green, .mint, .blue, .purple, .pink,
             Color(red: 1.0, green: 0.84, blue: 0.0)
         ]
-        let kinds: [Kind] = [.cherry, .cherry, .circle, .ribbon]
+        let kinds: [Kind] = [.piece, .piece, .circle, .ribbon]
         return (0..<count).map { _ in
             ConfettiPiece(
                 x: CGFloat.random(in: 0...1),
@@ -83,7 +88,8 @@ private struct ConfettiPiece: Identifiable {
                 spin: Double.random(in: 240...1200) * (Bool.random() ? 1 : -1),
                 duration: Double.random(in: 2.2...4.6),
                 phase: Double.random(in: 0...1),
-                kind: kinds.randomElement()!
+                kind: kinds.randomElement()!,
+                emoji: emoji
             )
         }
     }

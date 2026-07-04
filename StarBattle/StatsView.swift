@@ -4,6 +4,8 @@ import SwiftUI
 /// best / average completion time). Reloads each time it appears.
 struct StatsView: View {
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .star }
     @State private var selected = Difficulty.easy
     @State private var stats = Stats()
     @State private var showResetConfirm = false
@@ -32,7 +34,7 @@ struct StatsView: View {
 
                 Section("Helpers") {
                     row("Hints used", "\(stats.hints)", "lightbulb.fill", .blue)
-                    row("Bad cherries caught", "\(stats.badGuesses)", "xmark.seal.fill", .red)
+                    row("Bad \(piece.plural) caught", "\(stats.badGuesses)", "xmark.seal.fill", .red)
                 }
 
                 if stats.solved == 0 {

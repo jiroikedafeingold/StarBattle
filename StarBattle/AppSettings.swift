@@ -103,7 +103,7 @@ nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
 /// app icon); the rest are bright emoji alternatives — a few classics plus some
 /// deliberately quirky picks for fun.
 enum PieceStyle: String, CaseIterable, Identifiable {
-    case cherry, star, queen, dog, cat, bunny
+    case star, cherry, queen, dog, cat, bunny
     case poop, alien, ghost, robot, unicorn, dino
 
     var id: String { rawValue }

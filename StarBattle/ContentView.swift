@@ -16,7 +16,7 @@ struct ContentView: View {
     var body: some View {
         TabView {
             GameView(model: model)
-                .tabItem { Label { Text("Play") } icon: { CherryTabIcon.image } }
+                .tabItem { Label { Text("Play") } icon: { PlayTabIcon.image } }
 
             StatsView()
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
