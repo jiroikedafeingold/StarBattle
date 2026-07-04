@@ -124,30 +124,18 @@ struct CherryBattleIntroView: View {
         let w = geo.size.width, h = geo.size.height
         let center = CGPoint(x: w * clash.x, y: h * clash.y)
         return ZStack {
-            ZStack {
-                // A blurred, screen-filling copy so the square logo covers a tall phone
-                // (or wide iPad) with no hard letterbox bands…
-                Image("SplashArt")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: w, height: h)
-                    .clipped()
-                    .blur(radius: 44)
-                    .opacity(0.6)
-                    .scaleEffect(1.12)
-                // …with the whole logo shown uncropped on top, carrying the battle motion.
-                Image("SplashArt")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: w, height: h)
-                    .scaleEffect(pose.zoom)
-                    .rotationEffect(.degrees(pose.rot), anchor: .center)
-                    .offset(x: pose.shakeX, y: pose.shakeY)
-            }
-            .frame(width: w, height: h)
-            .clipped()
-            .accessibilityElement()
-            .accessibilityLabel("Star Battle+")
+            // The portrait key-art, filling the screen and carrying the battle motion.
+            Image("SplashArt")
+                .resizable()
+                .scaledToFill()
+                .frame(width: w, height: h)
+                .scaleEffect(pose.zoom)
+                .rotationEffect(.degrees(pose.rot), anchor: .center)
+                .offset(x: pose.shakeX, y: pose.shakeY)
+                .frame(width: w, height: h)
+                .clipped()
+                .accessibilityElement()
+                .accessibilityLabel("Star Battle+")
 
             // Clash flash — a base glow that spikes bright on each hit.
             RadialGradient(
