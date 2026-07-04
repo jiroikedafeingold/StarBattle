@@ -33,37 +33,78 @@ struct StarView: View {
         Canvas { ctx, sz in
             let s = min(sz.width, sz.height)
             let c = CGPoint(x: s / 2, y: s * 0.53)   // nudged down — stars read top-heavy
-            let path = Self.star(center: c, outer: s * 0.47, inner: s * 0.198, points: 5)
+            let R = s * 0.47, r = s * 0.198
+            let verts = Self.starPoints(center: c, outer: R, inner: r, points: 5)
+            let path = Self.star(from: verts)
 
-            ctx.fill(path, with: .linearGradient(
+            // Base: a raised-centre radial gradient (bright core fading to a deep rim),
+            // reading as a rounded, puffed solid rather than a flat cut-out.
+            ctx.fill(path, with: .radialGradient(
                 Gradient(colors: [p.bright, p.mid, p.deep]),
-                startPoint: CGPoint(x: c.x, y: c.y - s * 0.47),
-                endPoint: CGPoint(x: c.x, y: c.y + s * 0.47)))
+                center: CGPoint(x: c.x - s * 0.05, y: c.y - s * 0.06),
+                startRadius: s * 0.02, endRadius: R * 1.02))
 
+            // Facet shading: treat each triangular facet (centre → two rim vertices) as a
+            // slanted plane and light it by how much it faces a top-left light. Facets
+            // tilted toward the light brighten; those away darken — a gem-cut 3D look.
+            let light = CGVector(dx: -0.42, dy: -0.91)
+            for i in 0..<verts.count {
+                let a = verts[i], b = verts[(i + 1) % verts.count]
+                var tri = Path()
+                tri.move(to: c); tri.addLine(to: a); tri.addLine(to: b); tri.closeSubpath()
+                let mid = CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+                var dx = mid.x - c.x, dy = mid.y - c.y
+                let len = max(0.0001, (dx * dx + dy * dy).squareRoot())
+                dx /= len; dy /= len
+                let d = dx * light.dx + dy * light.dy
+                if d > 0 {
+                    ctx.fill(tri, with: .color(.white.opacity(0.42 * d)))
+                } else {
+                    ctx.fill(tri, with: .color(.black.opacity(0.36 * -d)))
+                }
+            }
+
+            // Crisp ridge highlights running out along the spine of each arm.
+            var ridges = Path()
+            for i in stride(from: 0, to: verts.count, by: 2) {
+                ridges.move(to: c); ridges.addLine(to: verts[i])
+            }
+            ctx.stroke(ridges, with: .color(.white.opacity(0.20)),
+                       style: StrokeStyle(lineWidth: max(0.4, s * 0.013), lineCap: .round))
+
+            // Dark rim for definition.
             ctx.stroke(path, with: .color(p.outline),
-                       style: StrokeStyle(lineWidth: max(0.6, s * 0.028), lineJoin: .round))
+                       style: StrokeStyle(lineWidth: max(0.6, s * 0.03), lineJoin: .round))
 
-            // A soft specular highlight near the top point.
-            let shine = Path(ellipseIn: CGRect(x: c.x - s * 0.12, y: c.y - s * 0.33,
-                                               width: s * 0.22, height: s * 0.15))
-            ctx.fill(shine, with: .color(.white.opacity(0.5)))
+            // A tight specular glint near the top point.
+            let shine = Path(ellipseIn: CGRect(x: c.x - s * 0.10, y: c.y - s * 0.34,
+                                               width: s * 0.17, height: s * 0.12))
+            ctx.fill(shine, with: .color(.white.opacity(0.65)))
         }
         .frame(width: size, height: size)
         .shadow(color: p.glow.opacity(0.45), radius: size * 0.06)
-        .shadow(color: .black.opacity(0.22), radius: size * 0.03, x: 0, y: size * 0.02)
+        .shadow(color: .black.opacity(0.24), radius: size * 0.03, x: 0, y: size * 0.02)
     }
 
-    /// A closed `points`-pointed star path, first point at the top.
-    private static func star(center c: CGPoint, outer R: CGFloat, inner r: CGFloat, points: Int) -> Path {
-        var path = Path()
+    /// The `points * 2` alternating outer/inner vertices of a star, first point at the top.
+    private static func starPoints(center c: CGPoint, outer R: CGFloat, inner r: CGFloat, points: Int) -> [CGPoint] {
+        var pts: [CGPoint] = []
         let step = Double.pi / Double(points)
         var angle = -Double.pi / 2
         for i in 0..<(points * 2) {
             let rad = i.isMultiple(of: 2) ? R : r
-            let pt = CGPoint(x: c.x + CGFloat(cos(angle)) * rad,
-                             y: c.y + CGFloat(sin(angle)) * rad)
-            if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
+            pts.append(CGPoint(x: c.x + CGFloat(cos(angle)) * rad,
+                               y: c.y + CGFloat(sin(angle)) * rad))
             angle += step
+        }
+        return pts
+    }
+
+    /// A closed star path through the given vertices.
+    private static func star(from pts: [CGPoint]) -> Path {
+        var path = Path()
+        for (i, pt) in pts.enumerated() {
+            if i == 0 { path.move(to: pt) } else { path.addLine(to: pt) }
         }
         path.closeSubpath()
         return path
