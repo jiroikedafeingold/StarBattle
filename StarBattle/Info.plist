@@ -20,5 +20,18 @@
 		<key>UIColorName</key>
 		<string>LaunchBackground</string>
 	</dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>CFBundleURLName</key>
+			<string>com.jirofeingold.CherryBomb.board</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>starbattleplus</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

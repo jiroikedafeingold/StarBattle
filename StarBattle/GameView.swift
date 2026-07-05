@@ -248,7 +248,13 @@ struct GameView: View {
 
     private var header: some View {
         VStack(spacing: 4) {
-            GameTitle()
+            // Title centred, with a Share button tucked to its right. The hidden mirror
+            // copy on the left balances the button's width so the title stays centred.
+            HStack(spacing: 10) {
+                shareButton.hidden()
+                GameTitle().layoutPriority(1)
+                shareButton
+            }
             Group {
                 if model.puzzle.starsPerUnit == 1 {
                     Text("Place 1 \(pieceStyle.noun) in every row, column and region")
@@ -267,6 +273,20 @@ struct GameView: View {
             difficultyPicker
                 .padding(.top, 12)
         }
+    }
+
+    /// Shares a deep link that opens the app to this exact board on someone else's device.
+    private var shareButton: some View {
+        ShareLink(item: BoardShareLink.url(for: model.puzzle),
+                  subject: Text("Star Battle+"),
+                  message: Text("Can you solve this Star Battle+ board?")) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(6)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("Share this board")
     }
 
     private var difficultyPicker: some View {

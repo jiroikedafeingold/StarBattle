@@ -281,6 +281,36 @@ final class GameViewModel {
         Task { await newGame() }
     }
 
+    /// Installs a board received from a shared link, replacing the current game with a
+    /// fresh (unsolved) copy of that exact layout. Called from `onOpenURL`.
+    func loadShared(_ shared: Puzzle) {
+        isGenerating = false
+        isSolved = false
+        elapsedSeconds = 0
+        generationStage = nil
+        puzzle = shared
+        marks = Self.emptyMarks(size: shared.size)
+        highlights = Self.emptyHighlights(size: shared.size)
+        autoDotCount.removeAll()
+        highlightAutoDotCount.removeAll()
+        history.removeAll()
+        redoStack.removeAll()
+        clearCheck()
+        dismissHint()
+        firstGuessCell = nil
+        guessGhost = nil
+        isHighlightMode = false
+        hintUsedThisGame = false
+        badPlacementThisGame = false
+        // Match the difficulty band to the shared board so the header and picker agree.
+        if let level = shared.difficulty, level != difficulty {
+            difficulty = level
+            UserDefaults.standard.set(level.rawValue, forKey: SettingsKey.difficulty)
+        }
+        if !isPreview { StatsStore.recordStarted(difficulty) }
+        saveGame()
+    }
+
     /// Keeps each difficulty's queue topped to its target, current level first, building
     /// one board at a time off the main actor so generation never starves the UI. Every
     /// finished board is also saved to the on-disk pool for launch-screen variety.

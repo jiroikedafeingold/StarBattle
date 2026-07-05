@@ -11,20 +11,26 @@ struct ContentView: View {
     /// new puzzles on it; Settings buys and restores it).
     @State private var store = PurchaseManager()
     @State private var showOnboarding = false
+    /// The selected tab, so an incoming shared-board link can jump to Play.
+    @State private var selectedTab = 0
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             GameView(model: model)
+                .tag(0)
                 .tabItem { Label { Text("Play") } icon: { PlayTabIcon.image } }
 
             StatsView()
+                .tag(1)
                 .tabItem { Label("Stats", systemImage: "chart.bar") }
 
             HelpView()
+                .tag(2)
                 .tabItem { Label("Help", systemImage: "questionmark.circle") }
 
             SettingsView()
+                .tag(3)
                 .tabItem { Label("Settings", systemImage: "gearshape") }
         }
         .environment(store)
@@ -39,6 +45,13 @@ struct ContentView: View {
         .onChange(of: scenePhase) { _, phase in
             // Persist the current game whenever the app leaves the foreground.
             if phase != .active { model.saveGame() }
+        }
+        .onOpenURL { url in
+            // A shared "starbattleplus://" link: load the exact board and show Play.
+            if let shared = BoardShareLink.puzzle(from: url) {
+                model.loadShared(shared)
+                selectedTab = 0
+            }
         }
     }
 }
