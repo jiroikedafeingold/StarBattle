@@ -275,9 +275,17 @@ struct GameView: View {
         }
     }
 
-    /// Shares a deep link that opens the app to this exact board on someone else's device.
+    /// The current board tagged with the active difficulty, so the share link carries the
+    /// right level even for launch boards that arrived without a difficulty set.
+    private var shareablePuzzle: Puzzle {
+        var puzzle = model.puzzle
+        if puzzle.difficulty == nil { puzzle.difficulty = model.difficulty }
+        return puzzle
+    }
+
+    /// Shares a link that opens the app to this exact board on someone else's device.
     private var shareButton: some View {
-        ShareLink(item: BoardShareLink.url(for: model.puzzle),
+        ShareLink(item: BoardShareLink.url(for: shareablePuzzle),
                   subject: Text("Star Battle+"),
                   message: Text("Can you solve this Star Battle+ board?")) {
             Image(systemName: "square.and.arrow.up")
