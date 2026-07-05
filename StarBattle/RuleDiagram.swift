@@ -158,9 +158,9 @@ struct RuleExamplesView: View {
 #Preview("web-rule1") {
     HStack(alignment: .top, spacing: 36) {
         RuleExample(title: "Two per line",
-                    board: RuleDiagrams.twoPerLine(cell: 42), ok: true)
+                    board: RuleDiagrams.twoPerLine(piece: .star, cell: 42), ok: true)
         RuleExample(title: "Two per region",
-                    board: RuleDiagrams.region(cell: 42))
+                    board: RuleDiagrams.region(piece: .star, cell: 42))
     }
     .padding(36)
     .background(Color.white)
@@ -169,9 +169,9 @@ struct RuleExamplesView: View {
 #Preview("web-rule2") {
     HStack(alignment: .top, spacing: 36) {
         RuleExample(title: "Blocks neighbours",
-                    board: RuleDiagrams.neverTouch(cell: 42))
+                    board: RuleDiagrams.neverTouch(piece: .star, cell: 42))
         RuleExample(title: "Not even diagonally",
-                    board: RuleDiagrams.touchBad(cell: 42), ok: false)
+                    board: RuleDiagrams.touchBad(piece: .star, cell: 42), ok: false)
     }
     .padding(36)
     .background(Color.white)
