@@ -65,18 +65,19 @@ enum FreePuzzleLimiter {
 /// `PuzzleGenerator.band(forProfile:)`. `nonisolated` so the off-main generator
 /// can use it.
 nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
-    case beginner, easy, medium, hard
+    case beginner, easy, medium, hard, expert
 
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
-    /// A compact label so all four levels fit the segmented picker on small phones.
+    /// A compact label so all five levels fit the segmented picker on small phones.
     var shortLabel: String {
         switch self {
         case .beginner: return "Begin"
         case .easy:     return "Easy"
         case .medium:   return "Med"
         case .hard:     return "Hard"
+        case .expert:   return "Exp"
         }
     }
 
@@ -94,7 +95,8 @@ nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
         case .beginner: return .easy
         case .easy:     return .medium
         case .medium:   return .hard
-        case .hard:     return nil
+        case .hard:     return .expert
+        case .expert:   return nil
         }
     }
 }

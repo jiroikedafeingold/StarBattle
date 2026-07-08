@@ -98,6 +98,9 @@ final class GameViewModel {
     /// The cell the current hint refers to, so the board can highlight it and the
     /// explanation can be positioned beside it. Nil when a hint has no single cell.
     private(set) var hintFocus: GridPosition?
+    /// The named technique behind the current hint (for the tappable "Technique" chip
+    /// and its explanatory popup). Nil when the hint isn't technique-based.
+    private(set) var hintTechnique: HintTechnique?
     /// Bumped each time a hint is given, so the view can fire a haptic.
     private(set) var hintPulse = 0
     /// Whether a hint can be requested right now.
@@ -755,6 +758,10 @@ final class GameViewModel {
     /// an explanation in `hintMessage` for the view to show. If the player has an
     /// incorrect cherry, or the position needs a guess, nothing is placed and the
     /// message says so.
+    /// Works out the next logically-forced move, places it on the board, highlights the
+    /// square, and shows an explanation with the named technique behind it (tappable for
+    /// more detail). If the player has an incorrect cherry, or the position needs a guess,
+    /// nothing is placed and the message says so.
     func hint(item: String = "cherry", items: String = "cherries") {
         guard canHint else { return }
         hintUsedThisGame = true
@@ -780,16 +787,19 @@ final class GameViewModel {
         }
 
         // Highlight the relevant square (the placed cell, or the offending one for a
-        // mistake) so the explanation can sit beside it.
+        // mistake), name the technique, and show the explanation. Set after `pushHistory`,
+        // which clears them via `dismissHint`.
         hintFocus = result.position
+        hintTechnique = result.technique
         hintMessage = result.message
         hintPulse &+= 1
     }
 
-    /// Dismisses the current hint highlight and explanation.
+    /// Dismisses the current hint highlight, explanation, and technique.
     func dismissHint() {
         hintMessage = nil
         hintFocus = nil
+        hintTechnique = nil
     }
 
     /// Hidden helper: fills in the entire solution except a single cherry, leaving the

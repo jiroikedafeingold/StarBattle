@@ -42,6 +42,12 @@ nonisolated enum PuzzleGenerator {
     /// boards are, so generation stays as fast as before.
     static let hardMinTier2 = 5
 
+    /// The fewest times a board must *force* the depth-2 technique before we call it
+    /// Expert — the level above Hard. Expert boards demand the hard technique again and
+    /// again (a Hard board forces it 5–7 times; an Expert board 8+). Graded with the same
+    /// fast depth-2 profiler as Hard, so generation stays practical.
+    static let expertMinTier2 = 8
+
     /// Medium is biased toward its gentle end *and* toward simple shapes. A board that
     /// forces the depth-2 technique at most `mediumLowTier2` times AND has at least
     /// `mediumMinSmall` small (≤6 cell) regions is taken immediately; otherwise the best
@@ -79,9 +85,10 @@ nonisolated enum PuzzleGenerator {
     /// "Hard" reliably hard: Easy never needs depth-2, Medium needs it occasionally,
     /// and Hard needs it again and again.
     static func band(forProfile p: DifficultyProfile) -> Difficulty {
-        if p.tier2Steps == 0 { return .easy }            // pure single-cell logic
-        if p.tier2Steps >= hardMinTier2 { return .hard } // forces depth-2 repeatedly
-        return .medium                                   // a few depth-2 moments
+        if p.tier2Steps == 0 { return .easy }              // pure single-cell logic
+        if p.tier2Steps >= expertMinTier2 { return .expert } // forces depth-2 relentlessly
+        if p.tier2Steps >= hardMinTier2 { return .hard }   // forces depth-2 repeatedly
+        return .medium                                     // a few depth-2 moments
     }
 
     /// Computes a board's solve profile, or nil if it isn't solvable within depth-2.

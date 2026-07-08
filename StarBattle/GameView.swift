@@ -7,7 +7,6 @@ struct GameView: View {
     @State private var model: GameViewModel
     @State private var showNewConfirm = false
     @State private var showClearConfirm = false
-    @State private var showHintConfirm = false
     @State private var showEraseConfirm = false
     @State private var celebrationHaptics = CelebrationHaptics()
 
@@ -166,13 +165,6 @@ struct GameView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This removes all your marks and guesses.")
-        }
-        .confirmationDialog("Show a hint?", isPresented: $showHintConfirm,
-                            titleVisibility: .visible) {
-            Button("Show Hint") { model.hint(item: pieceStyle.noun, items: pieceStyle.plural) }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("This places the next logical move and explains why.")
         }
         .confirmationDialog("Erase all guesses?", isPresented: $showEraseConfirm,
                             titleVisibility: .visible) {
@@ -394,7 +386,7 @@ struct GameView: View {
         .frame(width: side, height: side)
         .overlay(alignment: hintAlignment) {
             if let message = model.hintMessage {
-                HintBubble(text: message) { model.dismissHint() }
+                HintBubble(text: message, technique: model.hintTechnique) { model.dismissHint() }
                     .frame(maxWidth: side - 16)
                     .padding(6)
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
@@ -552,9 +544,12 @@ struct GameView: View {
                            isEnabled: model.canHint,
                            onLongPress: secretNearSolve) {
                     // A long press just fired the secret near-solve; swallow the tap
-                    // that lands on release so the hint dialog doesn't also appear.
+                    // that lands on release so a hint doesn't also fire.
                     if secretSolveFired { secretSolveFired = false; return }
-                    showHintConfirm = true
+                    // Progressive hints: each tap escalates (name the technique → point to
+                    // the square → place it), so the button acts directly with no gate —
+                    // the early steps don't change the board, so there's nothing to confirm.
+                    model.hint(item: pieceStyle.noun, items: pieceStyle.plural)
                 }
                 ToolButton(title: "Check", systemImage: "checkmark.seal",
                            onLongPress: deepCheck, longPressSeconds: 3) {
@@ -778,15 +773,37 @@ private struct TitlePalette {
 /// it — or the close button — dismisses it.
 private struct HintBubble: View {
     let text: String
+    var technique: HintTechnique? = nil
     let onDismiss: () -> Void
+
+    @State private var showInfo = false
 
     var body: some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: "lightbulb.fill")
                 .foregroundStyle(.blue)
-            Text(text)
-                .font(.footnote)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(text)
+                    .font(.footnote)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let technique {
+                    Button { showInfo = true } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "graduationcap.fill").font(.caption2)
+                            Text(technique.name).font(.caption.weight(.semibold))
+                            Image(systemName: "info.circle").font(.caption2)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.blue.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
+                    .popover(isPresented: $showInfo) {
+                        TechniqueInfoView(technique: technique)
+                    }
+                }
+            }
             Button(action: onDismiss) {
                 Image(systemName: "xmark.circle.fill")
                     .foregroundStyle(.secondary)
@@ -797,7 +814,28 @@ private struct HintBubble: View {
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14))
         .shadow(radius: 6)
         .contentShape(RoundedRectangle(cornerRadius: 14))
-        .onTapGesture(perform: onDismiss)
+    }
+}
+
+/// The tap-through glossary for a hint's technique: its name and a plain-language
+/// description of when and why it works. Shown as a popover from the technique chip.
+private struct TechniqueInfoView: View {
+    let technique: HintTechnique
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "graduationcap.fill").foregroundStyle(.blue)
+                Text(technique.name).font(.headline)
+            }
+            Text(technique.info)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 280)
+        .presentationCompactAdaptation(.popover)
     }
 }
 
