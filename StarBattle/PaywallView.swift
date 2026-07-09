@@ -18,7 +18,7 @@ struct PaywallView: View {
                         .font(.title.bold())
                         .multilineTextAlignment(.center)
 
-                    Text("Free play gives you one new puzzle a day in each of Easy, Medium and Hard. Unlock Full Access to play as many as you like.")
+                    Text("Free play gives you one new puzzle a day in each of Easy, Medium, Hard and Expert. Unlock Full Access to play as many as you like.")
                         .font(.callout)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -76,7 +76,7 @@ struct PaywallView: View {
 
     private var features: some View {
         VStack(alignment: .leading, spacing: 12) {
-            feature("infinity", "Unlimited new puzzles in Easy, Medium & Hard")
+            feature("infinity", "Unlimited new puzzles in Easy, Medium, Hard & Expert")
             feature("calendar", "No daily limit — play whenever you want")
             feature("checkmark.seal.fill", "One-time purchase, yours forever")
         }

@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.swipeDots) private var swipeDots = true
     @AppStorage(SettingsKey.haptics) private var haptics = true
     @AppStorage(SettingsKey.winCelebration) private var winCelebration = true
+    @AppStorage(SettingsKey.checkDots) private var checkDots = false
 
     @Environment(PurchaseManager.self) private var store
     @State private var showPaywall = false
@@ -70,9 +71,14 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Assists") {
+                Section {
                     Toggle("Place dots around pieces", isOn: $autoDot)
                     Toggle("Swipe to draw dots", isOn: $swipeDots)
+                    Toggle("Flag poorly placed dots on Check", isOn: $checkDots)
+                } header: {
+                    Text("Assists")
+                } footer: {
+                    Text("When on, Check also flags any dot you've placed where a piece belongs. (A long press on Check always does this.)")
                 }
 
                 Section("Feedback") {

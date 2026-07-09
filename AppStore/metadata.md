@@ -3,7 +3,7 @@
 _Brand name is **Star Battle+** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
-## What's New (2.2, ≤4000)
+## What's New (2.1, ≤4000)
 A tougher new Expert level, and hints that teach you the techniques.
 
 • New Expert level — the hardest boards yet, demanding the toughest logical technique again and again. Five levels now: Beginner, Easy, Medium, Hard and Expert.

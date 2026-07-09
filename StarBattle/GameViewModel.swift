@@ -700,39 +700,47 @@ final class GameViewModel {
         return result
     }
 
-    /// Flags every placed star that isn't part of the puzzle's (unique) solution.
-    /// The highlight stays until the player next changes the board.
+    /// Whether a normal Check should also flag poorly-placed dots (Settings; default off).
+    private var checkDotsEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.checkDots) }
+
+    /// Flags every placed star that isn't part of the puzzle's (unique) solution. When the
+    /// "show poorly placed dots" setting is on, it also flags dots sitting where a piece
+    /// belongs. The highlight stays until the player next changes the board.
     func check() {
+        performCheck(includeDots: checkDotsEnabled)
+    }
+
+    /// A deeper Check, triggered by long-pressing the Check button: always flags both wrong
+    /// cherries and any dot placed on a square the solution needs a cherry on — catching
+    /// squares ruled out by mistake — regardless of the setting.
+    func checkDeep() {
+        performCheck(includeDots: true)
+    }
+
+    /// Shared Check implementation. Always flags wrong cherries; flags poorly-placed dots
+    /// when `includeDots` is true.
+    private func performCheck(includeDots: Bool) {
         guard !isGenerating, !puzzle.solution.isEmpty else { return }
         let wrong = starPositions.filter { !puzzle.solution.contains($0) }
         wrongStars = Set(wrong)
-        lastCheckHadErrors = !wrong.isEmpty
+
+        var badDots: Set<GridPosition> = []
+        if includeDots {
+            for r in 0..<puzzle.size {
+                for c in 0..<puzzle.size where marks[r][c] == .dot {
+                    let pos = GridPosition(row: r, col: c)
+                    if puzzle.solution.contains(pos) { badDots.insert(pos) }
+                }
+            }
+        }
+        wrongDots = badDots
+
+        lastCheckHadErrors = !wrong.isEmpty || !badDots.isEmpty
         checkPulse &+= 1
         if lastCheckHadErrors {
             playWrongHaptics()
             badPlacementThisGame = true
-            if !isPreview { StatsStore.recordBadGuesses(difficulty, wrong.count) }
-        }
-    }
-
-    /// A deeper Check, triggered by long-pressing the Check button: in addition to
-    /// flagging wrong cherries, it marks any dot the player placed on a square that the
-    /// solution actually needs a cherry on — catching squares ruled out by mistake.
-    func checkDeep() {
-        check()
-        guard !puzzle.solution.isEmpty else { return }
-        var badDots: Set<GridPosition> = []
-        for r in 0..<puzzle.size {
-            for c in 0..<puzzle.size where marks[r][c] == .dot {
-                let pos = GridPosition(row: r, col: c)
-                if puzzle.solution.contains(pos) { badDots.insert(pos) }
-            }
-        }
-        wrongDots = badDots
-        if !badDots.isEmpty {
-            lastCheckHadErrors = true
-            badPlacementThisGame = true
-            if wrongStars.isEmpty { playWrongHaptics() }   // avoid a double buzz
+            if !isPreview, !wrong.isEmpty { StatsStore.recordBadGuesses(difficulty, wrong.count) }
         }
     }
 

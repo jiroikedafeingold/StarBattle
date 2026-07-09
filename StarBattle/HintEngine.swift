@@ -174,7 +174,7 @@ enum HintEngine {
         private var anItem: String { "\(itemArticle) \(item)" }
 
         /// The named techniques, described in terms of the player's chosen piece.
-        enum TechniqueKind { case onlySpots, forcedSquare, lineComplete, noTouching, lookAhead }
+        enum TechniqueKind { case onlySpots, forcedSquare, lineComplete, noTouching, confinement, lookAhead }
 
         private func tech(_ kind: TechniqueKind) -> HintTechnique {
             switch kind {
@@ -198,6 +198,11 @@ enum HintEngine {
                     name: "No Touching",
                     lookFor: "\(itemsCap) can never sit next to each other — not even diagonally.",
                     info: "Two \(items) may never touch, so every one of the eight squares around \(anItem), including the diagonals, must be empty.")
+            case .confinement:
+                return HintTechnique(
+                    name: "Confinement",
+                    lookFor: "One line or region's remaining \(items) are trapped inside another — so that shared area is claimed.",
+                    info: "When every square where one row, column or region could still place its \(items) sits inside another that needs the same number, those \(items) are claimed by the shared squares — so the rest of that second row, column or region must be empty. A cornerstone technique on harder boards.")
             case .lookAhead:
                 return HintTechnique(
                     name: "Look Ahead",
@@ -271,6 +276,11 @@ enum HintEngine {
             if let best = cherryMoves.min(by: { regionSize[$0.cell] < regionSize[$1.cell] }) { return best }
             if let best = dotMoves.min(by: { regionSize[$0.cell] < regionSize[$1.cell] }) { return best }
 
+            // 5½. Confinement (a counting technique): if a unit's remaining pieces must all
+            //     fall inside another unit that needs the same number, that second unit's
+            //     other squares are ruled out. Tried before the expensive deep search.
+            if let move = confinementMove() { return move }
+
             // 6. Deep (nested) contradiction → cherry: leaving it empty leads, after a
             //    few more forced steps, to an impossible board. (Hard boards.)
             for i in 0..<state.count where state[i] == 0 {
@@ -324,6 +334,41 @@ enum HintEngine {
                 if !progressed { break }
             }
             return true
+        }
+
+        /// Confinement: if every square where unit A can still place its remaining pieces
+        /// lies inside another unit B that needs the same number, then B's pieces are exactly
+        /// those shared squares — so any of B's other open squares can be ruled out. This is a
+        /// sound counting deduction (region-in-a-line, line-in-a-region, and the like) that
+        /// simple single-cell logic misses.
+        private func confinementMove() -> Step? {
+            let unitSets = units.map { Set($0) }
+            var openOf: [[Int]] = []
+            var needOf: [Int] = []
+            for unit in units {
+                let (stars, open) = tally(unit)
+                openOf.append(open)
+                needOf.append(quota - stars)
+            }
+            for a in units.indices {
+                let needA = needOf[a]
+                let openA = openOf[a]
+                guard needA > 0, !openA.isEmpty else { continue }
+                let openASet = Set(openA)
+                for b in units.indices where b != a {
+                    guard needOf[b] == needA else { continue }
+                    // Every one of A's open cells must sit inside unit B.
+                    guard openA.allSatisfy({ unitSets[b].contains($0) }) else { continue }
+                    // B's pieces are pinned to the shared cells — rule out B's other open cells.
+                    for cell in openOf[b] where !openASet.contains(cell) {
+                        let pos = GridPosition(row: cell / n, col: cell % n)
+                        return Step(cell: cell, star: false,
+                            reason: "\(unitName(a)) can only fit its \(needA == 1 ? item : items) inside \(unitName(b).lowercased()), which needs exactly \(needA) — so \(unitName(b).lowercased()) is spoken for, and row \(pos.row + 1), column \(pos.col + 1) must be empty.",
+                            technique: tech(.confinement))
+                    }
+                }
+            }
+            return nil
         }
 
         /// Cherries placed and the list of still-open cells in a unit.

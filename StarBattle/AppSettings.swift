@@ -19,6 +19,9 @@ enum SettingsKey {
     static let haptics = "haptics"
     /// Whether the falling-confetti animation plays on a win. Default on.
     static let winCelebration = "winCelebration"
+    /// Whether a normal Check also flags dots placed where a piece belongs. Default off;
+    /// the deep Check (long-press) always flags them regardless.
+    static let checkDots = "checkDots"
 
     /// Reads a Bool that should default to `true` when the user hasn't set it yet.
     static func boolDefaultingTrue(_ key: String) -> Bool {
