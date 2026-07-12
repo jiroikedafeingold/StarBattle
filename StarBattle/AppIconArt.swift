@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The app icon artwork: a zoomed-in crop of a Star Battle+ board showing one small,
+/// The app icon artwork: a zoomed-in crop of a Cherry Battle board showing one small,
 /// irregular region (seven cells) with its two cherries already correctly placed — far
 /// enough apart that they never touch. Rendered from the `#Preview` below and exported
 /// into `AppIcon.appiconset` (see the app-icon regeneration notes).

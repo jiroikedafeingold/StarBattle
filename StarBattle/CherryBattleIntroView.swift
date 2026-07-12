@@ -1,8 +1,8 @@
 //
 //  CherryBattleIntroView.swift
-//  Star Battle+ — intro / welcome screen
+//  Cherry Battle — intro / welcome screen
 //
-//  Shows the "Star Battle+" star-fighter key-art splash full-bleed and
+//  Shows the "Cherry Battle" star-fighter key-art splash full-bleed and
 //  makes it feel like a live brawl: a repeating one-two impact that shakes the frame,
 //  flashes light where the fists clash, and sends a shockwave ring rippling out — over
 //  a slow breathing zoom, with sparkles twinkling around the logo. Tapping anywhere
@@ -161,7 +161,7 @@ struct CherryBattleIntroView: View {
                 .frame(width: w, height: h)
                 .clipped()
                 .accessibilityElement()
-                .accessibilityLabel("Star Battle+")
+                .accessibilityLabel("Cherry Battle")
 
             // Clash flash — sized to the displayed art, not the whole (wide) screen.
             RadialGradient(

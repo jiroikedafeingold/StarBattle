@@ -5,7 +5,7 @@ import SwiftUI
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage(SettingsKey.hasSeenOnboarding) private var hasSeenOnboarding = false
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
 
     @State private var page = 0
 
@@ -31,7 +31,7 @@ struct OnboardingView: View {
     private var slides: [Slide] {
         [
             Slide(art: .piece, tint: .red,
-                  title: "Welcome to Star Battle+",
+                  title: "Welcome to Cherry Battle",
                   body: "A bite-size logic puzzle. Fill the board with \(piece.plural) using pure deduction — no luck required."),
             Slide(art: .perLineBoth, tint: .orange,
                   title: "Two per line — or one",
