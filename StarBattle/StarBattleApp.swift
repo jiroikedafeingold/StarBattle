@@ -9,7 +9,7 @@ struct StarBattleApp: App {
     }
 }
 
-/// Shows the animated Cherry Battle intro first; tapping Play fades it away to reveal
+/// Shows the animated Star Battle+ intro first; tapping Play fades it away to reveal
 /// the game. (The real iOS launch screen — drawn by the system before any code runs —
 /// is necessarily static, so an animated intro like this lives just inside the app.)
 private struct RootView: View {

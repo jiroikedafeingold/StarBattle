@@ -45,7 +45,7 @@ struct GameView: View {
         _model = State(initialValue: model ?? GameViewModel())
     }
 
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
     @AppStorage(SettingsKey.haptics) private var haptics = true
@@ -59,7 +59,7 @@ struct GameView: View {
     /// Presents the Full Access paywall when a free player is out of daily puzzles.
     @State private var showPaywall = false
 
-    private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    private var pieceStyle: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .star }
     private var difficulty: Difficulty { Difficulty(rawValue: difficultyRaw) ?? .easy }
 
     /// True only on a full-screen iPad. iPhones are always compact in at least one
@@ -278,8 +278,8 @@ struct GameView: View {
     /// Shares a link that opens the app to this exact board on someone else's device.
     private var shareButton: some View {
         ShareLink(item: BoardShareLink.url(for: shareablePuzzle),
-                  subject: Text("Cherry Battle"),
-                  message: Text("Can you solve this Cherry Battle board?")) {
+                  subject: Text("Star Battle+"),
+                  message: Text("Can you solve this Star Battle+ board?")) {
             Image(systemName: "square.and.arrow.up")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -654,14 +654,15 @@ struct AppBackground: View {
     ])
 }
 
-/// The game title: "CHERRY BATTLE" in all caps to echo the cherry key-art — a cherry-red
-/// "CHERRY" and a royal-blue "BATTLE". Solid colours with only a hint of shading — a
+/// The game title: "STAR BATTLE+" in all caps to echo the star key-art — a golden "STAR",
+/// a royal-blue "BATTLE" and a golden "+". Solid colours with only a hint of shading — a
 /// subtle darker under-edge and a soft cast shadow — rather than heavy 3D lettering.
 struct GameTitle: View {
     var body: some View {
         HStack(spacing: 2) {
-            ShadedWord(text: "CHERRY ", color: Color(hex: 0xD11A32), shade: Color(hex: 0x9E1526))
+            ShadedWord(text: "STAR ", color: Color(hex: 0xF3A81A), shade: Color(hex: 0xB5790A))
             ShadedWord(text: "BATTLE", color: Color(hex: 0x2E6BE5), shade: Color(hex: 0x224F9E))
+            ShadedWord(text: "+", color: Color(hex: 0xF3A81A), shade: Color(hex: 0xB5790A))
         }
         .font(.system(size: 34, weight: .heavy, design: .rounded))
         .tracking(0.5)
@@ -670,7 +671,7 @@ struct GameTitle: View {
         // A soft, low cast shadow for a gentle lift — no gradient, no gloss.
         .shadow(color: .black.opacity(0.16), radius: 1.5, x: 0, y: 1)
         .accessibilityElement()
-        .accessibilityLabel("Cherry Battle")
+        .accessibilityLabel("Star Battle+")
         .accessibilityAddTraits(.isHeader)
     }
 }

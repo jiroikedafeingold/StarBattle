@@ -4,10 +4,10 @@ import SwiftUI
 /// button to replay the tutorial, and credits.
 struct HelpView: View {
     @State private var showTutorial = false
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
     @AppStorage(SettingsKey.difficulty) private var difficultyRaw = Difficulty.easy.rawValue
 
-    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .star }
     /// One in Beginner, two otherwise — so the rules and tactics teach the right count.
     private var stars: Int { (Difficulty(rawValue: difficultyRaw) ?? .easy).starsPerUnit }
 
@@ -104,7 +104,7 @@ struct HelpView: View {
 
                 Section("Credits") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Cherry Battle is a friendly take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
+                        Text("Star Battle+ is a friendly take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
                         Text("Made with ⭐️ & SwiftUI.")
                             .foregroundStyle(.secondary)
                     }

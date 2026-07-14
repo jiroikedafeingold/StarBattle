@@ -4,7 +4,7 @@ import StoreKit
 /// The Settings tab: appearance, the piece icon, and whether the timer is shown.
 /// Everything is backed by `@AppStorage`, so changes apply live across the app.
 struct SettingsView: View {
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
     @AppStorage(SettingsKey.hideTimer) private var hideTimer = false
     @AppStorage(SettingsKey.autoDot) private var autoDot = true
     @AppStorage(SettingsKey.swipeDots) private var swipeDots = true

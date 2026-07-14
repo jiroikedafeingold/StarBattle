@@ -104,11 +104,11 @@ nonisolated enum Difficulty: String, CaseIterable, Identifiable, Codable {
     }
 }
 
-/// The glyph the player places on the board. The cherry is the default (and the
+/// The glyph the player places on the board. The star is the default (and the
 /// app icon); the rest are bright emoji alternatives — a few classics plus some
 /// deliberately quirky picks for fun.
 enum PieceStyle: String, CaseIterable, Identifiable {
-    case cherry, star, queen, dog, cat, bunny
+    case star, cherry, queen, dog, cat, bunny
     case poop, alien, ghost, robot, unicorn, dino
 
     var id: String { rawValue }

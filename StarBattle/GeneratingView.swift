@@ -10,8 +10,8 @@ struct GeneratingView: View {
     /// so a rare slow build visibly looks like it's working rather than stuck.
     var attempt: Int = 0
 
-    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.cherry.rawValue
-    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .cherry }
+    @AppStorage(SettingsKey.pieceStyle) private var pieceRaw = PieceStyle.star.rawValue
+    private var piece: PieceStyle { PieceStyle(rawValue: pieceRaw) ?? .star }
 
     /// The four build phases, each with an icon, shown as a left-to-right progress track.
     private static let steps: [(stage: GenerationStage, icon: String)] = [
