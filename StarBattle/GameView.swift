@@ -278,8 +278,8 @@ struct GameView: View {
     /// Shares a link that opens the app to this exact board on someone else's device.
     private var shareButton: some View {
         ShareLink(item: BoardShareLink.url(for: shareablePuzzle),
-                  subject: Text("Star Battle+"),
-                  message: Text("Can you solve this Star Battle+ board?")) {
+                  subject: Text("Star Battle Nova"),
+                  message: Text("Can you solve this Star Battle Nova board?")) {
             Image(systemName: "square.and.arrow.up")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(.secondary)
@@ -654,24 +654,25 @@ struct AppBackground: View {
     ])
 }
 
-/// The game title: "STAR BATTLE+" in all caps to echo the star key-art — a golden "STAR",
-/// a royal-blue "BATTLE" and a golden "+". Solid colours with only a hint of shading — a
-/// subtle darker under-edge and a soft cast shadow — rather than heavy 3D lettering.
+/// The game title: "STAR BATTLE NOVA" in all caps to echo the star key-art — a golden
+/// "STAR", a royal-blue "BATTLE" and a golden "NOVA". Solid colours with only a hint of
+/// shading — a subtle darker under-edge and a soft cast shadow — rather than heavy 3D
+/// lettering.
 struct GameTitle: View {
     var body: some View {
         HStack(spacing: 2) {
             ShadedWord(text: "STAR ", color: Color(hex: 0xF3A81A), shade: Color(hex: 0xB5790A))
-            ShadedWord(text: "BATTLE", color: Color(hex: 0x2E6BE5), shade: Color(hex: 0x224F9E))
-            ShadedWord(text: "+", color: Color(hex: 0xF3A81A), shade: Color(hex: 0xB5790A))
+            ShadedWord(text: "BATTLE ", color: Color(hex: 0x2E6BE5), shade: Color(hex: 0x224F9E))
+            ShadedWord(text: "NOVA", color: Color(hex: 0xF3A81A), shade: Color(hex: 0xB5790A))
         }
-        .font(.system(size: 34, weight: .heavy, design: .rounded))
+        .font(.system(size: 30, weight: .heavy, design: .rounded))
         .tracking(0.5)
         .minimumScaleFactor(0.7)
         .lineLimit(1)
         // A soft, low cast shadow for a gentle lift — no gradient, no gloss.
         .shadow(color: .black.opacity(0.16), radius: 1.5, x: 0, y: 1)
         .accessibilityElement()
-        .accessibilityLabel("Star Battle+")
+        .accessibilityLabel("Star Battle Nova")
         .accessibilityAddTraits(.isHeader)
     }
 }

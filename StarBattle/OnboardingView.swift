@@ -31,7 +31,7 @@ struct OnboardingView: View {
     private var slides: [Slide] {
         [
             Slide(art: .piece, tint: .red,
-                  title: "Welcome to Star Battle+",
+                  title: "Welcome to Star Battle Nova",
                   body: "A bite-size logic puzzle. Fill the board with \(piece.plural) using pure deduction — no luck required."),
             Slide(art: .perLineBoth, tint: .orange,
                   title: "Two per line — or one",

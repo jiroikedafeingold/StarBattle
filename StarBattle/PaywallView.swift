@@ -14,7 +14,7 @@ struct PaywallView: View {
             ScrollView {
                 VStack(spacing: 22) {
                     hero
-                    Text("Star Battle+ Full Access")
+                    Text("Star Battle Nova Full Access")
                         .font(.title.bold())
                         .multilineTextAlignment(.center)
 

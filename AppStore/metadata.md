@@ -1,6 +1,6 @@
-# Star Battle+ — App Store metadata
+# Star Battle Nova — App Store metadata
 
-_Brand name is **Star Battle+** (matches the app's on-device display name and the website).
+_Brand name is **Star Battle Nova** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
 ## What's New (2.2.1, ≤4000)
@@ -23,7 +23,7 @@ Pick your challenge, track your progress, and play in your language.
 • Localized for 10 languages, a refined new title, and a fresh look.
 
 ## App name (≤30)
-Star Battle+
+Star Battle Nova
 
 ## Subtitle (≤30)
 Two-not-touch logic puzzle
@@ -35,7 +35,7 @@ Two stars in every row, column and region — and never touching. Five difficult
 logic puzzle,star battle,two not touch,brain,queens,deduction,grid,nonogram,sudoku,offline,puzzle
 
 ## Description (≤4000)
-Star Battle+ is a clean, friendly take on Star Battle — the elegant "two-not-touch" logic puzzle.
+Star Battle Nova is a clean, friendly take on Star Battle — the elegant "two-not-touch" logic puzzle.
 
 The rules are simple, the deductions are deep: place two stars in every row, every column and every coloured region. The catch — no two stars may ever touch, not even diagonally. From those few rules grows a surprisingly rich puzzle you solve with pure logic.
 
@@ -56,9 +56,9 @@ WHY YOU'LL LIKE IT
 FREE TO PLAY
 Beginner mode is always free and unlimited, and Easy, Medium, Hard and Expert each give you a fresh puzzle every day at no cost. Love it? A single one-time purchase unlocks unlimited new puzzles in every mode, forever — no subscriptions.
 
-Whether you have two minutes in a queue or twenty on the couch, Star Battle+ is a calm, rewarding little brain workout.
+Whether you have two minutes in a queue or twenty on the couch, Star Battle Nova is a calm, rewarding little brain workout.
 
-Star Battle+ is a friendly take on Star Battle, the classic logic puzzle invented by Hans Eendebak. All credit for the original puzzle design goes to him.
+Star Battle Nova is a friendly take on Star Battle, the classic logic puzzle invented by Hans Eendebak. All credit for the original puzzle design goes to him.
 
 ## Support / Marketing URL
 https://jiroikedafeingold.github.io/StarBattle/
@@ -68,4 +68,4 @@ https://jiroikedafeingold.github.io/StarBattle/
   `main`). It only goes live once GitHub Pages is enabled for the repo:
   Settings → Pages → Source: "Deploy from a branch" → Branch `main`, folder `/docs`.
 - Keep the description honest: puzzles are **generated on device**, not hand-authored.
-- The App Store listing name is **Star Battle+**; the Xcode target/scheme is still `StarBattle`.
+- The App Store listing name is **Star Battle Nova**; the Xcode target/scheme is still `StarBattle`.

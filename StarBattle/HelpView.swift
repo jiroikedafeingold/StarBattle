@@ -104,7 +104,7 @@ struct HelpView: View {
 
                 Section("Credits") {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Star Battle+ is a friendly take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
+                        Text("Star Battle Nova is a friendly take on **Star Battle**, the classic logic puzzle invented by **Hans Eendebak**. All credit for the original puzzle design goes to him.")
                         Text("Made with ⭐️ & SwiftUI.")
                             .foregroundStyle(.secondary)
                     }

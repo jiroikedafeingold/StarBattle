@@ -1,7 +1,7 @@
 import Foundation
 import StoreKit
 
-/// Owns the app's single in-app purchase — "Star Battle+ Full Access", a one-time
+/// Owns the app's single in-app purchase — "Star Battle Nova Full Access", a one-time
 /// non-consumable unlock that removes the free daily puzzle limit. Uses StoreKit 2:
 /// it loads the product, tracks the current entitlement, and exposes purchase and
 /// restore. A background task also listens for transactions that arrive outside a

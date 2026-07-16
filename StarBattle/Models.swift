@@ -27,7 +27,7 @@ nonisolated enum CellHighlight: Equatable, Codable {
     case guessEmpty
 }
 
-/// A fully described Star Battle+ puzzle.
+/// A fully described Star Battle Nova puzzle.
 ///
 /// A puzzle is defined entirely by its region layout. The `solution` is kept
 /// alongside it for reference, but the player never needs it — every puzzle the
