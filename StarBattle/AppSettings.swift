@@ -17,11 +17,18 @@ enum SettingsKey {
     static let swipeDots = "swipeDots"
     /// Whether haptic feedback fires on taps, checks and wins. Default on.
     static let haptics = "haptics"
+    /// Whether sound effects play (placements, drags, errors, "Do it", wins). Default on.
+    static let sound = "sound"
     /// Whether the falling-confetti animation plays on a win. Default on.
     static let winCelebration = "winCelebration"
     /// Whether a normal Check also flags dots placed where a piece belongs. Default off;
     /// the deep Check (long-press) always flags them regardless.
     static let checkDots = "checkDots"
+    /// Whether placed pieces play a looping, playful animation. Default off.
+    static let animatePieces = "animatePieces"
+    /// Whether rule-breaking pieces are flagged live as you play (two touching, or too
+    /// many in a row/column/region), with a strong error haptic. Default off.
+    static let liveErrors = "liveErrors"
 
     /// Reads a Bool that should default to `true` when the user hasn't set it yet.
     static func boolDefaultingTrue(_ key: String) -> Bool {

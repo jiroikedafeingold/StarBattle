@@ -3,6 +3,16 @@
 _Brand name is **Star Battle Nova** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
+## What's New (2.3, ≤4000)
+Sound, motion, and live mistake-spotting.
+
+• Sound effects — satisfying taps as you place pieces and dots, a confirming chime when you "Do it", and a cheerful jingle when you win. Turn it off anytime in Settings.
+• Playful pieces — an optional fun little hop-and-wiggle animation for the pieces on your board.
+• Spot mistakes live — a new optional mode that flags rule-breaking pieces the moment you place them (two touching, or too many in a row, column or region) with an animated highlight and a buzz.
+• Polish and fixes throughout.
+
+Thanks for playing! ⭐️
+
 ## What's New (2.2.1, ≤4000)
 A tougher new Expert level, and hints that teach you the techniques.
 
@@ -49,6 +59,7 @@ WHY YOU'LL LIKE IT
 • Share a board — send a friend a link that opens the exact same puzzle to race or compare.
 • Track your progress — games solved, solve rate, best & average times, hints used and mistakes caught, per difficulty.
 • Make it yours — a light or dark theme, a quiet timer you can hide, and a playing piece you pick: star, cherry, robot, unicorn, dino and more.
+• Make it playful — optional sound effects, a fun hop-and-wiggle piece animation, and a live mistake-checker that flags rule-breaking pieces the moment you place them.
 • iPhone, iPad & Mac — an adaptive board that fills the screen on any device, in portrait or landscape.
 • Sweet victory — solve it and the board bursts into a shower of pieces and a celebratory rumble of haptics.
 • No ads, no accounts, no tracking — and it works completely offline.

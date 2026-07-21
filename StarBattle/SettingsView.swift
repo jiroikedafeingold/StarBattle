@@ -9,8 +9,11 @@ struct SettingsView: View {
     @AppStorage(SettingsKey.autoDot) private var autoDot = true
     @AppStorage(SettingsKey.swipeDots) private var swipeDots = true
     @AppStorage(SettingsKey.haptics) private var haptics = true
+    @AppStorage(SettingsKey.sound) private var sound = true
     @AppStorage(SettingsKey.winCelebration) private var winCelebration = true
     @AppStorage(SettingsKey.checkDots) private var checkDots = false
+    @AppStorage(SettingsKey.animatePieces) private var animatePieces = false
+    @AppStorage(SettingsKey.liveErrors) private var liveErrors = false
 
     @Environment(PurchaseManager.self) private var store
     @State private var showPaywall = false
@@ -49,7 +52,8 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Game piece") {
+                Section {
+                    Toggle("Playful animation", isOn: $animatePieces)
                     ForEach(PieceStyle.allCases) { style in
                         Button {
                             pieceRaw = style.rawValue
@@ -69,20 +73,26 @@ struct SettingsView: View {
                             }
                         }
                     }
+                } header: {
+                    Text("Game piece")
+                } footer: {
+                    Text("Playful animation gives your placed pieces a fun little hop-and-wiggle on the board.")
                 }
 
                 Section {
                     Toggle("Place dots around pieces", isOn: $autoDot)
                     Toggle("Swipe to draw dots", isOn: $swipeDots)
                     Toggle("Flag poorly placed dots on Check", isOn: $checkDots)
+                    Toggle("Show errors while playing", isOn: $liveErrors)
                 } header: {
                     Text("Assists")
                 } footer: {
-                    Text("When on, Check also flags any dot you've placed where a piece belongs. (A long press on Check always does this.)")
+                    Text("“Flag poorly placed dots on Check” also flags dots you've placed where a piece belongs (a long press on Check always does this). “Show errors while playing” highlights rule-breaking pieces the moment you place them — two touching, or too many in a row, column or region — with a buzz.")
                 }
 
                 Section("Feedback") {
                     Toggle("Haptics", isOn: $haptics)
+                    Toggle("Sound effects", isOn: $sound)
                     Toggle("Win celebration", isOn: $winCelebration)
                 }
 

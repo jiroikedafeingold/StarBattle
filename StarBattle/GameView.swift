@@ -359,6 +359,7 @@ struct GameView: View {
                 highlights: model.highlights,
                 wrongStars: model.wrongStars,
                 wrongDots: model.wrongDots,
+                ruleViolations: model.ruleViolations,
                 pieceStyle: pieceStyle,
                 hintCell: model.hintFocus,
                 ghostCell: model.guessGhost,

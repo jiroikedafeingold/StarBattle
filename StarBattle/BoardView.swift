@@ -16,6 +16,9 @@ struct BoardView: View {
     let wrongStars: Set<GridPosition>
     /// Dots flagged by a deep "Check" as ruled-out-by-mistake; drawn in red.
     var wrongDots: Set<GridPosition> = []
+    /// Stars that break a rule right now (live error checking) — shown with an animated
+    /// red conflict highlight, distinct from the blue "Check" finish.
+    var ruleViolations: Set<GridPosition> = []
     /// The glyph used for placed marks and guess ghosts (from Settings).
     var pieceStyle: PieceStyle = .cherry
     /// The cell the current hint refers to; drawn with an attention ring.
@@ -31,6 +34,9 @@ struct BoardView: View {
     let onDragBegin: () -> Void
     let onDragPaint: (GridPosition, GridPosition) -> Void
     let onDragEnd: () -> Void
+
+    /// Whether placed pieces play the looping playful animation (Settings; default off).
+    @AppStorage(SettingsKey.animatePieces) private var animatePieces = false
 
     private enum DragAxis { case horizontal, vertical }
 
@@ -52,9 +58,12 @@ struct BoardView: View {
                             regionColor: Color.regionColor(puzzle.regionId(row: row, col: col)),
                             isWrong: wrongStars.contains(GridPosition(row: row, col: col)),
                             isWrongDot: wrongDots.contains(GridPosition(row: row, col: col)),
+                            isError: ruleViolations.contains(GridPosition(row: row, col: col)),
                             hideStar: hiddenStars.contains(GridPosition(row: row, col: col)),
                             pieceStyle: pieceStyle,
-                            cellSize: cell
+                            cellSize: cell,
+                            animatePieces: animatePieces,
+                            seed: row * puzzle.size + col
                         )
                         .frame(width: cell, height: cell)
                         .position(x: cell * CGFloat(col) + cell / 2,
@@ -156,10 +165,17 @@ private struct CellView: View {
     /// When true, a `.dot` cell is drawn red — a deep "Check" flagged it as a square the
     /// solution actually needs a cherry on.
     var isWrongDot: Bool = false
+    /// When true, this placed piece is part of a live rule conflict — shown with an
+    /// animated red ring + shake (distinct from the blue "Check" wrong finish).
+    var isError: Bool = false
     /// When true, a `.star` cell draws no piece (it's mid-burst in the win finale).
     var hideStar: Bool = false
     let pieceStyle: PieceStyle
     let cellSize: CGFloat
+    /// When true, a placed piece plays the looping playful animation (Settings).
+    var animatePieces: Bool = false
+    /// A per-cell value used to desync each piece's animation.
+    var seed: Int = 0
 
     var body: some View {
         ZStack {
@@ -176,7 +192,17 @@ private struct CellView: View {
                 EmptyView()
             case .star:
                 if !hideStar {
-                    PieceView(style: pieceStyle, isWrong: isWrong, size: cellSize * 0.84)
+                    let pieceSize = cellSize * 0.84
+                    let piece = PieceView(style: pieceStyle, isWrong: isWrong, size: pieceSize)
+                    if isError {
+                        // A live rule conflict takes visual priority: keep the piece its
+                        // normal colour but shake it inside a pulsing red ring.
+                        ConflictPiece(cellSize: cellSize) { piece }
+                    } else if animatePieces {
+                        QuirkyPiece(seed: seed, hopHeight: pieceSize * 0.14) { piece }
+                    } else {
+                        piece
+                    }
                 }
             case .dot:
                 Circle()

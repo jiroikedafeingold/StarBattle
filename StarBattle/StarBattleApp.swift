@@ -26,13 +26,15 @@ private struct RootView: View {
                 CherryBattleIntroView(onPlay: { dismissIntro() })
                 .transition(.opacity)
                 .zIndex(1)
-                .task {
-                    // Advance into the game on its own once the entrance animation has
-                    // played, unless the player taps Play first.
-                    try? await Task.sleep(for: .seconds(3.2))
-                    if !engaged { dismissIntro() }
-                }
             }
+        }
+        // Drive the auto-advance from the always-present root — not from the intro
+        // overlay's own lifecycle — so the game is *always* reachable. If this timer were
+        // attached to the intro view and its task were ever cancelled or never resumed on
+        // some device, the opaque splash could stay up forever with no path to the board.
+        .task {
+            try? await Task.sleep(for: .seconds(3.2))
+            if !engaged { dismissIntro() }
         }
     }
 

@@ -442,11 +442,13 @@ final class GameViewModel {
         case .empty:
             marks[row][col] = .dot
             lastActionPlacedStar = false
+            SoundEffects.shared.play(.dot)
         case .dot:
             marks[row][col] = .star
             if autoDotEnabled { addAutoDots(around: pos) }
             lastActionPlacedStar = true
             if !puzzle.solution.contains(pos) { badPlacementThisGame = true }
+            SoundEffects.shared.play(.place)
         case .star:
             removeAutoDots(around: pos)
             marks[row][col] = .empty
@@ -456,6 +458,12 @@ final class GameViewModel {
         // Backing the last guess out in normal mode also drops the first-guess ghost.
         noteHighlightsCleared()
         evaluateWin()
+
+        // Live rule-error feedback: a strong buzz when this placement breaks a rule
+        // (two pieces touching, or too many in a row/column/region).
+        if lastActionPlacedStar, liveErrorsEnabled, ruleViolations.contains(pos) {
+            playWrongHaptics()
+        }
     }
 
     /// Reverts the most recent action, restoring the exact board that preceded it.
@@ -588,6 +596,7 @@ final class GameViewModel {
             dragLength = cells.count
             lastActionPlacedStar = false
             tapPulse &+= 1 // a light tick as the stroke crosses each new cell
+            if !isHighlightMode { SoundEffects.shared.play(.dot) }
         }
     }
 
@@ -700,6 +709,43 @@ final class GameViewModel {
         return result
     }
 
+    /// Whether rule-breaking pieces are flagged live as you play (Settings; default off).
+    private var liveErrorsEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.liveErrors) }
+
+    /// Stars that break a Star Battle rule *right now* — two touching (including
+    /// diagonally), or more than the allowed number in a row, column or region. Empty
+    /// unless the "show errors while playing" setting is on. Purely rule-based, so it
+    /// works independently of (and does not reveal) the solution.
+    var ruleViolations: Set<GridPosition> {
+        guard liveErrorsEnabled else { return [] }
+        return Self.violatingStars(among: starPositions, puzzle: puzzle)
+    }
+
+    /// The subset of `stars` that break a placement rule: any two that touch (king-move
+    /// adjacency), and every star in a row/column/region that holds more than `quota`.
+    nonisolated static func violatingStars(among stars: [GridPosition], puzzle: Puzzle) -> Set<GridPosition> {
+        var bad: Set<GridPosition> = []
+        for i in stars.indices {
+            for j in stars.indices where j > i {
+                let a = stars[i], b = stars[j]
+                if abs(a.row - b.row) <= 1 && abs(a.col - b.col) <= 1 {
+                    bad.insert(a); bad.insert(b)
+                }
+            }
+        }
+        let quota = puzzle.starsPerUnit
+        var rows: [Int: [GridPosition]] = [:], cols: [Int: [GridPosition]] = [:], regions: [Int: [GridPosition]] = [:]
+        for s in stars {
+            rows[s.row, default: []].append(s)
+            cols[s.col, default: []].append(s)
+            regions[puzzle.regionId(row: s.row, col: s.col), default: []].append(s)
+        }
+        for group in [rows, cols, regions] {
+            for (_, members) in group where members.count > quota { bad.formUnion(members) }
+        }
+        return bad
+    }
+
     /// Whether a normal Check should also flag poorly-placed dots (Settings; default off).
     private var checkDotsEnabled: Bool { UserDefaults.standard.bool(forKey: SettingsKey.checkDots) }
 
@@ -744,8 +790,10 @@ final class GameViewModel {
         }
     }
 
-    /// A short, strong buzz of heavy impacts to signal a wrong placement.
+    /// A short, strong buzz of heavy impacts — plus an error sound — to signal a wrong
+    /// placement (a failed Check or a live rule conflict).
     private func playWrongHaptics() {
+        SoundEffects.shared.play(.bad)
         Task { @MainActor in
             for _ in 0..<5 {
                 wrongPulse &+= 1
@@ -866,6 +914,7 @@ final class GameViewModel {
         pushHistory()
         clearCheck()
         isRealizing = true
+        SoundEffects.shared.play(.doit)
         for (pos, guess) in guesses {
             withAnimation(.easeOut(duration: 0.18)) {
                 switch guess {
@@ -888,6 +937,9 @@ final class GameViewModel {
         firstGuessCell = nil          // guesses committed — start a fresh session
         isRealizing = false
         evaluateWin()
+
+        // Strong buzz if committing these guesses left any rule-breaking pieces.
+        if liveErrorsEnabled, !ruleViolations.isEmpty { playWrongHaptics() }
     }
 
     /// Cells carrying a guess highlight, in reading order, paired with the guess.
@@ -935,6 +987,7 @@ final class GameViewModel {
     /// ~3s swelling "confetti brushing past" sweep rather than a string of plain thuds.
     private func playCelebrationHaptics() {
         celebrationPulse &+= 1
+        SoundEffects.shared.play(.celebrate)
     }
 
     /// True when the board satisfies every Star Battle rule.

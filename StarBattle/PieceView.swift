@@ -150,6 +150,88 @@ private struct EmojiPiece: View {
     }
 }
 
+/// A looping, playful animation for a placed piece — a little squash, a hop, then a
+/// left/right wiggle, cycling forever. Used when the "Animate pieces" setting is on.
+/// Each piece is desynced by a per-cell `seed` (and small per-piece timing variance) so
+/// the board feels lively rather than marching in lockstep. iOS 17+ `PhaseAnimator`.
+struct QuirkyPiece<Content: View>: View {
+    let seed: Int
+    /// How far the piece hops up, in points (relative to the piece size).
+    let hopHeight: CGFloat
+    let content: Content
+
+    init(seed: Int, hopHeight: CGFloat, @ViewBuilder content: () -> Content) {
+        self.seed = seed
+        self.hopHeight = hopHeight
+        self.content = content()
+    }
+
+    var body: some View {
+        content.phaseAnimator(Phase.allCases) { view, phase in
+            view
+                .scaleEffect(x: phase.scaleX, y: phase.scaleY, anchor: .bottom)
+                .rotationEffect(.degrees(phase.rotation))
+                .offset(y: phase == .hop ? -hopHeight : 0)
+        } animation: { phase in
+            phase.animation(seed: seed)
+        }
+    }
+
+    private enum Phase: CaseIterable {
+        case rest, squash, hop, wiggleLeft, wiggleRight
+
+        var scaleX: CGFloat { self == .squash ? 1.15 : (self == .hop ? 0.90 : 1) }
+        var scaleY: CGFloat { self == .squash ? 0.85 : (self == .hop ? 1.12 : 1) }
+        var rotation: Double { self == .wiggleLeft ? -12 : (self == .wiggleRight ? 12 : 0) }
+
+        func animation(seed: Int) -> Animation {
+            // A little per-piece variance so pieces drift out of sync over time.
+            let jitter = 1 + Double(seed % 4) * 0.08
+            switch self {
+            case .rest:        return .easeInOut(duration: 0.55 * jitter)
+            case .squash:      return .easeIn(duration: 0.16)
+            case .hop:         return .spring(response: 0.34, dampingFraction: 0.48)
+            case .wiggleLeft:  return .easeInOut(duration: 0.20 * jitter)
+            case .wiggleRight: return .easeInOut(duration: 0.20 * jitter)
+            }
+        }
+    }
+}
+
+/// A placed piece caught in a live rule conflict: it keeps its normal colour but jitters
+/// with a quick shake inside a pulsing red ring and glow, so the pieces involved in the
+/// conflict jump out — clearly different from the blue "Check" wrong finish. Used only
+/// when the "show errors while playing" setting is on.
+struct ConflictPiece<Content: View>: View {
+    let cellSize: CGFloat
+    let content: Content
+    @State private var animate = false
+
+    init(cellSize: CGFloat, @ViewBuilder content: () -> Content) {
+        self.cellSize = cellSize
+        self.content = content()
+    }
+
+    var body: some View {
+        content
+            // A quick, alarming jitter on the piece itself.
+            .rotationEffect(.degrees(animate ? 5 : -5))
+            .animation(.easeInOut(duration: 0.13).repeatForever(autoreverses: true), value: animate)
+            // A pulsing red ring + glow framing the conflicting piece.
+            .background {
+                RoundedRectangle(cornerRadius: cellSize * 0.24, style: .continuous)
+                    .stroke(Color.red, lineWidth: max(1.5, cellSize * 0.05))
+                    .frame(width: cellSize * 0.9, height: cellSize * 0.9)
+                    .scaleEffect(animate ? 1.0 : 0.88)
+                    .opacity(animate ? 1.0 : 0.4)
+                    .shadow(color: .red.opacity(0.85),
+                            radius: animate ? cellSize * 0.09 : cellSize * 0.02)
+                    .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: animate)
+            }
+            .onAppear { animate = true }
+    }
+}
+
 /// Colours describing one cherry finish.
 private struct CherryPalette {
     let bright, mid, deep, outline, glow, stem, leaf: Color
