@@ -17,8 +17,12 @@ final class PuzzleStore {
                                 appropriateFor: nil, create: true)) ?? fm.temporaryDirectory
         let dir = base.appendingPathComponent("StarBattle", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
-        fileURL = dir.appendingPathComponent("puzzles.json")
-        prefetchURL = dir.appendingPathComponent("prefetch.json")
+        // v2: the previous pool files may hold boards a solver bug wrongly accepted as
+        // unique (a region with two non-adjacent cells in one row was mis-pruned). Bumping
+        // the filenames discards those instantly — the pool refills with correctly-verified
+        // boards during play, and launch falls back to the verified-unique starters meanwhile.
+        fileURL = dir.appendingPathComponent("puzzles-v2.json")
+        prefetchURL = dir.appendingPathComponent("prefetch-v2.json")
 
         if let data = try? Data(contentsOf: fileURL),
            let decoded = try? JSONDecoder().decode([Puzzle].self, from: data) {

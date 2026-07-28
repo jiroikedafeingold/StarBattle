@@ -15,6 +15,7 @@ final class SoundEffects {
         case bad         // a wrong placement / rule conflict
         case doit        // "Do it" — committing Mark-mode guesses
         case celebrate   // the win celebration
+        case explode     // a piece bursting during the win finale
     }
 
     private var players: [Effect: AVAudioPlayer] = [:]

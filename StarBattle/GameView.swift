@@ -440,6 +440,7 @@ struct GameView: View {
             for i in 0..<count {
                 if Task.isCancelled { return }
                 explodedCount = i + 1
+                SoundEffects.shared.play(.explode)   // a little burst as each piece pops
                 if haptics {
                     let ramp = count > 1 ? Double(i) / Double(count - 1) : 1
                     celebrationHaptics.playPop(strength: Float(0.8 + 0.2 * ramp))

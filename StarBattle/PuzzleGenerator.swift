@@ -146,6 +146,9 @@ nonisolated enum PuzzleGenerator {
             onProgress?(attempt, .checking)
             for _ in 0..<refinementCap {
                 let solutions = findSolutions(regions: regions, size: size, stars: stars, limit: 6)
+                // A layout built from a valid solution always has at least that solution. Zero means the
+                // solver failed, not that the board is unique — never accept it.
+                if solutions.isEmpty { break }
                 let alternates = solutions.filter { $0 != solution }
                 if alternates.isEmpty {
                     success = true
@@ -573,23 +576,31 @@ nonisolated enum PuzzleGenerator {
     }
 
     /// Fast, allocation-light solver specialised for the two-stars-per-unit case.
-    private static func findSolutionsTwoStar(regions: [[Int]], size: Int,
-                                             limit: Int) -> [Set<GridPosition>] {
+    static func findSolutionsTwoStar(regions: [[Int]], size: Int,
+                                     limit: Int) -> [Set<GridPosition>] {
         var regionCount = 0
         for row in regions {
             for id in row where id + 1 > regionCount { regionCount = id + 1 }
         }
 
-        // regionRowsAfter[id][r] = how many rows at index >= r contain a cell of
-        // region `id`. A region can gain at most one star per such row, so this
-        // bounds how many more of its stars are still placeable.
-        var regionRowsAfter = Array(repeating: [Int](repeating: 0, count: size + 1),
-                                    count: regionCount)
+        // regionCapAfter[id][r] = an upper bound on how many more stars region `id` can still
+        // take in rows at index >= r. Per row that's the largest set of mutually non-adjacent
+        // cells the region has in that row — a region with cells at columns 3 and 5 can hold
+        // two stars in one row, so counting rows (as this used to) is unsound and prunes away
+        // valid solutions.
+        var regionCapAfter = Array(repeating: [Int](repeating: 0, count: size + 1),
+                                   count: regionCount)
         for id in 0..<regionCount {
             for r in stride(from: size - 1, through: 0, by: -1) {
-                var present = false
-                for c in 0..<size where regions[r][c] == id { present = true; break }
-                regionRowsAfter[id][r] = regionRowsAfter[id][r + 1] + (present ? 1 : 0)
+                var maxHere = 0
+                var lastTaken = -2
+                for c in 0..<size {
+                    if regions[r][c] == id && c - lastTaken >= 2 {
+                        maxHere += 1
+                        lastTaken = c
+                    }
+                }
+                regionCapAfter[id][r] = min(2, regionCapAfter[id][r + 1] + maxHere)
             }
         }
 
@@ -608,7 +619,7 @@ nonisolated enum PuzzleGenerator {
         func feasible(afterRow row: Int) -> Bool {
             let remainingRows = size - (row + 1)
             for c in 0..<size where 2 - colCount[c] > remainingRows { return false }
-            for id in 0..<regionCount where 2 - regionStars[id] > regionRowsAfter[id][row + 1] {
+            for id in 0..<regionCount where 2 - regionStars[id] > regionCapAfter[id][row + 1] {
                 return false
             }
             return true
@@ -655,8 +666,8 @@ nonisolated enum PuzzleGenerator {
     }
 
     /// General recursive solver for any number of stars per unit.
-    private static func findSolutionsGeneral(regions: [[Int]], size: Int, stars: Int,
-                                             limit: Int) -> [Set<GridPosition>] {
+    static func findSolutionsGeneral(regions: [[Int]], size: Int, stars: Int,
+                                     limit: Int) -> [Set<GridPosition>] {
         let regionCount = (regions.flatMap { $0 }.max() ?? -1) + 1
         var colCount = Array(repeating: 0, count: size)
         var regionStars = Array(repeating: 0, count: regionCount)

@@ -6,7 +6,7 @@ Internal project/target/scheme remain `StarBattle`._
 ## What's New (2.3, ≤4000)
 Sound, motion, and live mistake-spotting.
 
-• Sound effects — satisfying taps as you place pieces and dots, a confirming chime when you "Do it", and a cheerful jingle when you win. Turn it off anytime in Settings.
+• Sound effects — satisfying taps as you place pieces and dots, a confirming chime when you "Do it", and a cheerful jingle with pieces popping like fireworks when you win. Turn it off anytime in Settings.
 • Playful pieces — an optional fun little hop-and-wiggle animation for the pieces on your board.
 • Spot mistakes live — a new optional mode that flags rule-breaking pieces the moment you place them (two touching, or too many in a row, column or region) with an animated highlight and a buzz.
 • Polish and fixes throughout.
