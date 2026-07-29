@@ -71,12 +71,12 @@ struct GeneratingView: View {
                 let reached = current >= i + 1
                 Image(systemName: step.icon)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(reached ? Color.accentColor : Color.secondary.opacity(0.35))
+                    .foregroundStyle(reached ? Color.titleGold : Color.secondary.opacity(0.35))
                     .scaleEffect(current == i + 1 ? 1.2 : 1)
                     .animation(.spring(duration: 0.3), value: current)
                 if i < Self.steps.count - 1 {
                     Capsule()
-                        .fill(current >= i + 2 ? Color.accentColor : Color.secondary.opacity(0.25))
+                        .fill(current >= i + 2 ? Color.titleGold : Color.secondary.opacity(0.25))
                         .frame(width: 14, height: 2)
                         .animation(.easeInOut(duration: 0.25), value: current)
                 }

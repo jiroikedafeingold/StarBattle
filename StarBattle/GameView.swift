@@ -771,7 +771,7 @@ private struct ToolButton: View {
 
     let title: String
     let systemImage: String
-    var tint: Color = .accentColor
+    var tint: Color = .titleGold
     var style: Style = .normal
     var isEnabled: Bool = true
     /// An optional action triggered by a long press of `longPressSeconds`. Used for the
@@ -846,8 +846,9 @@ private struct ToolButton: View {
         // unlike a faded tint.
         guard isEnabled else { return .secondary }
         switch style {
-        case .normal:   return tint
-        case .prominent, .active: return .white
+        case .normal:    return tint
+        case .prominent: return .titleGoldInk   // dark label reads clearly on solid gold
+        case .active:    return .white
         }
     }
 
@@ -855,7 +856,7 @@ private struct ToolButton: View {
         guard isEnabled else { return .secondary.opacity(0.18) }
         switch style {
         case .normal:    return tint.opacity(0.14)
-        case .prominent: return .accentColor
+        case .prominent: return .titleGold
         case .active:    return tint
         }
     }

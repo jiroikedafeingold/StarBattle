@@ -268,6 +268,12 @@ extension Color {
                   blue: Double(hex & 0xff) / 255.0,
                   opacity: alpha)
     }
+
+    /// The golden yellow of the "STAR"/"NOVA" title lettering — the app's accent for
+    /// highlighted controls.
+    static let titleGold = Color(hex: 0xF3A81A)
+    /// A dark, readable label colour for text sitting on a solid `titleGold` fill.
+    static let titleGoldInk = Color(hex: 0x3A2600)
 }
 
 #Preview {
