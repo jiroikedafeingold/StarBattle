@@ -14,6 +14,14 @@ struct HelpView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button {
+                        showTutorial = true
+                    } label: {
+                        Label("Replay the tutorial", systemImage: "play.circle")
+                    }
+                }
+
                 Section("How to play") {
                     if stars == 1 {
                         ruleRow("1️⃣",
@@ -92,14 +100,6 @@ struct HelpView: View {
                     tip("🔎",
                         "Deep-check your dots",
                         "Press and hold Check for a deeper look that also flags, in red, any dot you put on a square that actually needs \(piece.article) \(piece.noun).")
-                }
-
-                Section {
-                    Button {
-                        showTutorial = true
-                    } label: {
-                        Label("Replay the tutorial", systemImage: "play.circle")
-                    }
                 }
 
                 Section("Credits") {
