@@ -1,1 +1,0 @@
-logic puzzle,star battle,two not touch,brain,queens,deduction,grid,nonogram,sudoku,offline,puzzle
