@@ -3,6 +3,15 @@
 _Brand name is **Cherry Battle** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
+## What's New (2.3.1, ≤4000)
+Smoother marking, and a friendlier Check.
+
+• Smarter dot-drawing — when you swipe to sweep dots down a row or column, the line now snaps onto the one you meant: a row, column or region that already has all its pieces. No more fighting a stroke that lands one line off.
+• A nicer "all clear" — pressing Check on a clean board (and the press-and-hold deep Check) now always gives a pleasant little confirming buzz.
+• Polish and fixes throughout.
+
+Thanks for playing! 🍒
+
 ## What's New (2.3, ≤4000)
 Sound, motion, and live mistake-spotting.
 
