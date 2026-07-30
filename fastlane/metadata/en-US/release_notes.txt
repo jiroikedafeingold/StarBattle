@@ -5,4 +5,4 @@ Sound, motion, and live mistake-spotting.
 • Spot mistakes live — a new optional mode that flags rule-breaking pieces the moment you place them (two touching, or too many in a row, column or region) with an animated highlight and a buzz.
 • Polish and fixes throughout.
 
-Thanks for playing! 🍒
+Thanks for playing!
