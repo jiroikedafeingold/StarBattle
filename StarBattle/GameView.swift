@@ -212,11 +212,17 @@ struct GameView: View {
         .onAppear {
             if model.isSolved && !showBanner && finaleTask == nil { showBanner = true }
         }
-        // A clear tap every time Check is pressed; a clean board also gets a success
-        // chime. A wrong cherry adds the strong, longer buzz below.
+        // A strong tap when Check finds a wrong cherry (the longer buzz below piles on).
+        // A clean board gets the pleasant two-tap "all good" pattern via `onChange` — the
+        // notification-style `.success` feedback was dropping intermittently.
         .sensoryFeedback(trigger: model.checkPulse) { _, _ in
-            guard haptics else { return nil }
-            return model.lastCheckHadErrors ? .impact(weight: .heavy, intensity: 1.0) : .success
+            guard haptics, model.lastCheckHadErrors else { return nil }
+            return .impact(weight: .heavy, intensity: 1.0)
+        }
+        .onChange(of: model.checkPulse) { _, _ in
+            // Fires for both a normal Check and the long-press deep Check.
+            guard haptics, !model.lastCheckHadErrors else { return }
+            celebrationHaptics.playOk()
         }
         // A strong, repeated buzz when Check reveals a wrong cherry.
         .sensoryFeedback(trigger: model.wrongPulse) { _, _ in

@@ -67,6 +67,38 @@ final class CelebrationHaptics {
         }
     }
 
+    /// A gentle, pleasant two-tap confirmation — played when a Check (or long-press deep
+    /// Check) comes back clean. Soft and rounded, and clearly distinct from the sharp
+    /// error buzz. Reliable (Core Haptics, not the flaky notification feedback); no-ops on
+    /// devices without a haptic engine.
+    func playOk() {
+        guard supportsHaptics, let engine else { return }
+        do {
+            try engine.start()
+            let events = [
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.55),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.35)
+                    ],
+                    relativeTime: 0),
+                // A slightly firmer, brighter second tap — a friendly "all good" lilt.
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.9),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.55)
+                    ],
+                    relativeTime: 0.12)
+            ]
+            let player = try engine.makePlayer(with: CHHapticPattern(events: events, parameters: []))
+            try player.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            // Decorative — ignore failures.
+        }
+    }
+
     /// Fires the celebration pattern once. Safe to call on any device; failures are
     /// swallowed because haptics are a non-essential flourish.
     func play() {

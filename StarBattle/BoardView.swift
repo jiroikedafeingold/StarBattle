@@ -7,6 +7,11 @@ import SwiftUI
 /// once the finger crosses into a second cell the stroke locks to whichever axis
 /// it started moving along, and stays on that row/column even if the finger drifts
 /// — so a quick horizontal or vertical swipe lays down a clean straight line.
+///
+/// The locked line is also *nudged* onto the row/column the player most likely
+/// meant: strokes almost always run along a line that's already "done" (holds all
+/// its pieces) or through a region that's done, so if such a line sits within 20%
+/// of a cell of where the finger started, the stroke snaps onto it.
 struct BoardView: View {
     let puzzle: Puzzle
     let marks: [[CellMark]]
@@ -122,12 +127,105 @@ struct BoardView: View {
             // A drag only begins once the finger leaves the starting cell; until
             // then it might still be a tap.
             guard current != start else { return }
-            dragAxis = abs(value.translation.width) >= abs(value.translation.height)
+            let axis: DragAxis = abs(value.translation.width) >= abs(value.translation.height)
                 ? .horizontal : .vertical
+            dragAxis = axis
+            // Snap the stroke's anchor line onto the row/column the player most
+            // likely intended before the first dots are laid down.
+            dragStart = biasedStart(from: value.startLocation, axis: axis, cellSize: cell)
             isDragging = true
             onDragBegin()
         }
-        paint(from: start, to: current)
+        paint(from: dragStart ?? start, to: current)
+    }
+
+    /// Nudges a locked stroke's anchor onto the line the player most likely meant.
+    /// A row/column is a "sensible" target if it already holds all its pieces, or if
+    /// the cell where it meets the drag's start sits in a region that already holds
+    /// all of its — the cells left to fill in such a line are exactly the dots a swipe
+    /// lays down. If a sensible line lies within 20% of a cell of where the finger
+    /// started, the anchor snaps to it; otherwise it stays on the finger's own line.
+    private func biasedStart(from location: CGPoint, axis: DragAxis, cellSize: CGFloat) -> GridPosition {
+        let last = puzzle.size - 1
+        let startCol = min(max(Int(location.x / cellSize), 0), last)
+        let startRow = min(max(Int(location.y / cellSize), 0), last)
+        switch axis {
+        case .horizontal:
+            let fraction = Double(location.y / cellSize)   // continuous row position
+            let row = snapped(fraction: fraction, naive: startRow,
+                              candidates: sensibleRows(throughCol: startCol))
+            return GridPosition(row: row, col: startCol)
+        case .vertical:
+            let fraction = Double(location.x / cellSize)   // continuous column position
+            let col = snapped(fraction: fraction, naive: startCol,
+                              candidates: sensibleCols(throughRow: startRow))
+            return GridPosition(row: startRow, col: col)
+        }
+    }
+
+    /// Chooses the candidate line whose cell band — widened by 20% of a cell on each
+    /// side — contains `fraction`, nearest by centre; falls back to the finger's own
+    /// line (`naive`) when no candidate qualifies.
+    private func snapped(fraction: Double, naive: Int, candidates: Set<Int>) -> Int {
+        var best = naive
+        var bestDistance = Double.greatestFiniteMagnitude
+        for line in candidates {
+            let lower = Double(line) - 0.2, upper = Double(line) + 1.2
+            guard fraction >= lower, fraction < upper else { continue }
+            let distance = abs(fraction - (Double(line) + 0.5))
+            if distance < bestDistance { bestDistance = distance; best = line }
+        }
+        return best
+    }
+
+    /// Rows that make sensible snap targets for a horizontal stroke starting in `col`:
+    /// rows that already hold all their pieces, plus rows whose cell in `col` lies in
+    /// a fully-placed region.
+    private func sensibleRows(throughCol col: Int) -> Set<Int> {
+        let quota = puzzle.starsPerUnit
+        let doneRegions = completeRegionIDs()
+        var rows: Set<Int> = []
+        for row in 0..<puzzle.size {
+            if starCount(inRow: row) == quota
+                || doneRegions.contains(puzzle.regionId(row: row, col: col)) {
+                rows.insert(row)
+            }
+        }
+        return rows
+    }
+
+    /// Columns that make sensible snap targets for a vertical stroke starting in `row`.
+    private func sensibleCols(throughRow row: Int) -> Set<Int> {
+        let quota = puzzle.starsPerUnit
+        let doneRegions = completeRegionIDs()
+        var cols: Set<Int> = []
+        for col in 0..<puzzle.size {
+            if starCount(inCol: col) == quota
+                || doneRegions.contains(puzzle.regionId(row: row, col: col)) {
+                cols.insert(col)
+            }
+        }
+        return cols
+    }
+
+    private func starCount(inRow row: Int) -> Int {
+        (0..<puzzle.size).reduce(0) { $0 + (marks[row][$1] == .star ? 1 : 0) }
+    }
+
+    private func starCount(inCol col: Int) -> Int {
+        (0..<puzzle.size).reduce(0) { $0 + (marks[$1][col] == .star ? 1 : 0) }
+    }
+
+    /// Region ids that already hold their full complement of pieces.
+    private func completeRegionIDs() -> Set<Int> {
+        let quota = puzzle.starsPerUnit
+        var counts: [Int: Int] = [:]
+        for row in 0..<puzzle.size {
+            for col in 0..<puzzle.size where marks[row][col] == .star {
+                counts[puzzle.regionId(row: row, col: col), default: 0] += 1
+            }
+        }
+        return Set(counts.filter { $0.value == quota }.keys)
     }
 
     private func handleEnd(_ value: DragGesture.Value, cell: CGFloat) {
