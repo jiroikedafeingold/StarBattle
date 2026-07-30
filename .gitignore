@@ -1,0 +1,6 @@
+
+# Fastlane / App Store Connect
+fastlane/report.xml
+fastlane/README.md
+*.p8
+*.p12
