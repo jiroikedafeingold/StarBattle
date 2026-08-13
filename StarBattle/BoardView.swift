@@ -229,15 +229,90 @@ struct BoardView: View {
     }
 
     private func handleEnd(_ value: DragGesture.Value, cell: CGFloat) {
-        let start = dragStart ?? self.cell(at: value.startLocation, cellSize: cell)
         if isDragging {
             onDragEnd()
         } else {
-            onTap(start.row, start.col)
+            // On a small board a tap easily clips a neighbouring square. Nudge it to the cell the
+            // player most likely meant when their touch lands near a boundary.
+            let target = biasedTapCell(at: value.startLocation, cellSize: cell)
+            onTap(target.row, target.col)
         }
         dragStart = nil
         dragAxis = nil
         isDragging = false
+    }
+
+    // MARK: - Tap biasing
+
+    /// The buffer, as a fraction of a cell, in which a tap near a boundary can be pulled onto the
+    /// neighbouring square instead. 0.2 → the outer 20% band on each edge.
+    private static let tapBuffer = 0.2
+
+    /// Picks the square a tap most likely meant. The finger's own cell wins unless the touch lands
+    /// within `tapBuffer` of a boundary *and* an adjacent square is a distinctly more sensible target
+    /// — e.g. the finger clipped a placed cherry but there's an open square right beside it, or a
+    /// square that sensibly becomes a cherry. Deliberate, centred taps (and cherry-upgrade taps on a
+    /// dot) are never moved, since only a *strictly better* neighbour can win.
+    private func biasedTapCell(at point: CGPoint, cellSize: CGFloat) -> GridPosition {
+        let last = puzzle.size - 1
+        let xf = Double(point.x / cellSize), yf = Double(point.y / cellSize)
+        let naiveCol = min(max(Int(xf), 0), last)
+        let naiveRow = min(max(Int(yf), 0), last)
+        let naive = GridPosition(row: naiveRow, col: naiveCol)
+        let fx = xf - Double(naiveCol), fy = yf - Double(naiveRow)   // position within the cell [0,1)
+
+        // The neighbouring rows/columns whose band the finger is inside (plus the cell itself).
+        var cols = [naiveCol], rows = [naiveRow]
+        if fx < Self.tapBuffer, naiveCol > 0 { cols.append(naiveCol - 1) }
+        if fx > 1 - Self.tapBuffer, naiveCol < last { cols.append(naiveCol + 1) }
+        if fy < Self.tapBuffer, naiveRow > 0 { rows.append(naiveRow - 1) }
+        if fy > 1 - Self.tapBuffer, naiveRow < last { rows.append(naiveRow + 1) }
+        guard cols.count > 1 || rows.count > 1 else { return naive }   // squarely inside a cell
+
+        let naiveScore = tapScore(naive)
+        var best = naive
+        var bestScore = naiveScore
+        var bestDistance = Double.greatestFiniteMagnitude
+        for r in rows {
+            for c in cols where !(r == naiveRow && c == naiveCol) {
+                let cand = GridPosition(row: r, col: c)
+                let score = tapScore(cand)
+                guard score > naiveScore else { continue }   // only a strictly better square wins
+                let distance = hypot(xf - (Double(c) + 0.5), yf - (Double(r) + 0.5))
+                if score > bestScore || (score == bestScore && distance < bestDistance) {
+                    best = cand; bestScore = score; bestDistance = distance
+                }
+            }
+        }
+        return best
+    }
+
+    /// How sensible a tap on `p` is, so biasing prefers the square the player likely wanted:
+    /// an open square (a dot goes down) or a dot that legally becomes a cherry rank highest; a dot
+    /// where a cherry would break a rule is worse; a placed cherry (which a tap would *remove*) is
+    /// the worst, so an accidental edge tap never wipes one out when a better neighbour exists.
+    private func tapScore(_ p: GridPosition) -> Int {
+        switch marks[p.row][p.col] {
+        case .empty: return 3
+        case .dot:   return cherryMakesSense(at: p) ? 3 : 1
+        case .star:  return 0
+        }
+    }
+
+    /// Whether a cherry on `p` wouldn't immediately break a rule: no touching cherry (incl.
+    /// diagonally) and its row, column, and region aren't already full.
+    private func cherryMakesSense(at p: GridPosition) -> Bool {
+        let quota = puzzle.starsPerUnit
+        if starCount(inRow: p.row) >= quota { return false }
+        if starCount(inCol: p.col) >= quota { return false }
+        if completeRegionIDs().contains(puzzle.regionId(row: p.row, col: p.col)) { return false }
+        for dr in -1...1 {
+            for dc in -1...1 where !(dr == 0 && dc == 0) {
+                let r = p.row + dr, c = p.col + dc
+                if r >= 0, r < puzzle.size, c >= 0, c < puzzle.size, marks[r][c] == .star { return false }
+            }
+        }
+        return true
     }
 
     /// Paints a straight line of dots from `start` to `current`, clamped to the
@@ -401,7 +476,7 @@ private struct RegionBorders: View {
     // Fixed inks so the board reads the same on light and dark backgrounds: it is
     // a light play surface in both appearances.
     private let ink = Color(red: 0.13, green: 0.14, blue: 0.17)
-    private let gridLine = Color.black.opacity(0.14)
+    private let gridLine = Color.black.opacity(0.22)
 
     var body: some View {
         Canvas { context, _ in

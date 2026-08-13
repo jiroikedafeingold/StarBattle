@@ -3,6 +3,16 @@
 _Brand name is **Cherry Battle** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
+## What's New (2.4, ≤4000)
+A bigger board, and taps that go where you meant.
+
+• A bigger board — the grid now fills the full width of the screen, so every square is larger and easier to hit.
+• Clearer grid — slightly darker lines make it easier to follow a row or column across the board.
+• More forgiving taps — a tap that lands near the edge of a square now goes to the square you meant, and won't knock out a piece you've already placed.
+• Polish and fixes throughout.
+
+Thanks for playing!
+
 ## What's New (2.3.1, ≤4000)
 Smoother marking, and a friendlier Check.
 

@@ -75,7 +75,7 @@ struct GameView: View {
     }
 
     private var mainLayout: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: isPadLayout ? 10 : 4) {
             header
 
             // The board fills whatever space is left between the header and the
@@ -101,14 +101,18 @@ struct GameView: View {
                 }
             }
             .frame(height: 150)
+            .padding(.horizontal)
             // On iPad, add a little breathing room above the controls (a gap under the
             // board) and sit them low near the bottom edge (the tab bar floats at the
             // top, so there's nothing to clear down here).
             .padding(.top, isPadLayout ? 28 : 0)
-            .padding(.bottom, isPadLayout ? 6 : 28)
+            .padding(.bottom, isPadLayout ? 6 : 8)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 10)
+        // The board region spans the full width (no horizontal padding) so it fills the
+        // screen edge-to-edge on iPhone; the header and controls keep their own inset.
+        // A slim top inset lifts the title close to the top, giving the taller board room.
+        .padding(.top, isPadLayout ? 10 : 2)
+        .padding(.bottom, 10)
         // Keep the header just clear of the iPad's floating top tab bar while sitting it
         // close to the top of the screen.
         .safeAreaPadding(.top, isPadLayout ? 6 : 0)
@@ -269,8 +273,9 @@ struct GameView: View {
                     .padding(.top, 1)
             }
             difficultyPicker
-                .padding(.top, 12)
+                .padding(.top, isPadLayout ? 12 : 6)
         }
+        .padding(.horizontal)
     }
 
     /// The current board tagged with the active difficulty, so the share link carries the
