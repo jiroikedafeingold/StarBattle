@@ -1,8 +1,7 @@
-A bigger board, and taps that go where you meant.
+Smoother taps, and sound in Mark mode.
 
-• A bigger board — the grid now fills the full width of the screen, so every square is larger and easier to hit.
-• Clearer grid — slightly darker lines make it easier to follow a row or column across the board.
-• More forgiving taps — a tap that lands near the edge of a square now goes to the square you meant, and won't knock out a piece you've already placed.
+• Smoother board — placing pieces and sweeping dots now keeps up with your finger, with none of the lag that could creep in as you played.
+• Mark mode has sound — sketching guesses now plays the same sound effects and taps as the real board, a little softer.
 • Polish and fixes throughout.
 
 Thanks for playing!

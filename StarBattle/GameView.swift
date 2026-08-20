@@ -198,8 +198,11 @@ struct GameView: View {
         content
         .sensoryFeedback(trigger: model.tapPulse) { _, _ in
             guard haptics else { return nil }
-            return model.lastActionPlacedStar ? .impact(weight: .heavy, intensity: 1.0)
-                                              : .impact(weight: .medium, intensity: 0.8)
+            // Mark mode gets the same taps, softened to match its quieter sounds.
+            let scale = model.isHighlightMode ? GameViewModel.markFeedbackScale : 1
+            return model.lastActionPlacedStar
+                ? .impact(weight: .heavy, intensity: 1.0 * scale)
+                : .impact(weight: .medium, intensity: 0.8 * scale)
         }
         .sensoryFeedback(trigger: model.isSolved) { wasSolved, isSolved in
             (haptics && isSolved && !wasSolved) ? .success : nil

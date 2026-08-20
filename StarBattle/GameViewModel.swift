@@ -396,6 +396,16 @@ final class GameViewModel {
     /// Whether dragging paints a line of dots on the real board (Settings; default on).
     private var swipeToDotEnabled: Bool { SettingsKey.boolDefaultingTrue(SettingsKey.swipeDots) }
 
+    /// Mark mode plays the same sounds and haptics as the real board, at this fraction of
+    /// their normal loudness/intensity — sketching a guess should feel lighter than
+    /// committing a move. The view reads it for the tap haptic too.
+    static let markFeedbackScale = 0.75
+
+    /// The sound volume for an action in the current mode.
+    private var actionVolume: Float {
+        isHighlightMode ? Float(Self.markFeedbackScale) : 1
+    }
+
     func tap(row: Int, col: Int) {
         guard !isGenerating, !isSolved, !isRealizing else { return }
 
@@ -407,15 +417,19 @@ final class GameViewModel {
             pushHistory()
             let pos = GridPosition(row: row, col: col)
             switch highlights[row][col] {
+            // The guess layer gets the same sounds as the real board, a little softer.
+            // Clearing a guess is silent, mirroring how removing a cherry is.
             case .none:
                 if firstGuessCell == nil { firstGuessCell = pos }
                 highlights[row][col] = .guessEmpty
                 lastActionPlacedStar = false
+                SoundEffects.shared.play(.dot, volume: actionVolume)
             case .guessEmpty:
                 highlightAutoDotCount[pos] = nil      // this cell becomes a cherry guess
                 highlights[row][col] = .guessStar
                 if autoDotEnabled { addGuessAutoDots(around: pos) }
                 lastActionPlacedStar = true
+                SoundEffects.shared.play(.place, volume: actionVolume)
             case .guessStar:
                 removeGuessAutoDots(around: pos)
                 highlights[row][col] = .none
@@ -596,7 +610,7 @@ final class GameViewModel {
             dragLength = cells.count
             lastActionPlacedStar = false
             tapPulse &+= 1 // a light tick as the stroke crosses each new cell
-            if !isHighlightMode { SoundEffects.shared.play(.dot) }
+            SoundEffects.shared.play(.dot, volume: actionVolume)
         }
     }
 

@@ -3,7 +3,10 @@ import SwiftUI
 /// User-facing preferences, persisted with `@AppStorage`. These keys are read
 /// directly by the views that need them (the board, the timer, the root color
 /// scheme) so there is no separate settings object to thread through.
-enum SettingsKey {
+/// `nonisolated` because the project defaults to `MainActor` isolation: these are plain
+/// constants and a thread-safe `UserDefaults` read, and the audio layer needs them from a
+/// background queue.
+nonisolated enum SettingsKey {
     static let pieceStyle = "pieceStyle"
     static let appearance = "appearance"
     static let hideTimer = "hideTimer"
