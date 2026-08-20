@@ -3,7 +3,21 @@
 _Brand name is **Cherry Battle** (matches the app's on-device display name and the website).
 Internal project/target/scheme remain `StarBattle`._
 
-## What's New (2.4.1, ≤4000)
+## What's New (2.4.2, ≤4000)
+Smoother taps, sound in Mark mode, and a fresh board every time.
+
+• Smoother board — placing pieces and sweeping dots now keeps up with your finger, with none of the lag that could creep in as you played.
+• Mark mode has sound — sketching guesses now plays the same sound effects and taps as the real board, a little softer.
+• A fresh start — four times as many opening boards, so the app no longer greets you with the same puzzle, and the board you land on first is always a gentle one.
+• Polish and fixes throughout.
+
+Thanks for playing!
+
+## What's New (2.4.1, ≤4000) — NEVER RELEASED
+_Prepared but never submitted; superseded by 2.4.2, whose notes fold in these two items.
+Users went 2.4 → 2.4.2, so don't treat this as shipped._
+
+
 Smoother taps, and sound in Mark mode.
 
 • Smoother board — placing pieces and sweeping dots now keeps up with your finger, with none of the lag that could creep in as you played.

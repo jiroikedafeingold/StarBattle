@@ -58,14 +58,35 @@ final class PuzzleStore {
         try? data.write(to: prefetchURL, options: .atomic)
     }
 
+    /// Identifies a board by its region layout, for the "don't show the same one twice"
+    /// check below. (Puzzle isn't Equatable, and the layout is what the player recognises.)
+    private static func layoutKey(_ puzzle: Puzzle) -> String {
+        puzzle.regions.map { $0.map(String.init).joined() }.joined(separator: "/")
+    }
+
+    /// The layout shown at the last launch, so the next one can avoid repeating it.
+    private static let lastLaunchLayoutKey = "lastLaunchLayout"
+
     /// A puzzle to show at launch for the given difficulty: a previously saved board of
     /// that level if one exists, otherwise a built-in starter (or a placeholder).
+    ///
+    /// Whichever pool it comes from, the board shown at the previous launch is excluded, so
+    /// two launches in a row never open on the same layout — with only a handful of
+    /// candidates, plain `randomElement()` repeated noticeably often.
     func launchPuzzle(for difficulty: Difficulty) -> Puzzle {
-        if let pooled = saved.filter({ $0.difficulty == difficulty }).randomElement() {
-            return pooled
+        let pooled = saved.filter { $0.difficulty == difficulty }
+        let candidates = pooled.isEmpty ? Puzzle.starters(for: difficulty) : pooled
+        guard !candidates.isEmpty else {
+            return Puzzle.placeholder(size: difficulty.boardSize,
+                                      starsPerUnit: difficulty.starsPerUnit)
         }
-        return Puzzle.starters(for: difficulty).randomElement()
-            ?? Puzzle.placeholder(size: difficulty.boardSize, starsPerUnit: difficulty.starsPerUnit)
+
+        let previous = UserDefaults.standard.string(forKey: Self.lastLaunchLayoutKey)
+        let unseen = candidates.filter { Self.layoutKey($0) != previous }
+        // Fall back to the full set when the previous board is the only candidate.
+        let chosen = (unseen.isEmpty ? candidates : unseen).randomElement() ?? candidates[0]
+        UserDefaults.standard.set(Self.layoutKey(chosen), forKey: Self.lastLaunchLayoutKey)
+        return chosen
     }
 
     /// Adds a freshly generated puzzle (skipping duplicate layouts), trims the pool

@@ -1,7 +1,8 @@
-Smoother taps, and sound in Mark mode.
+Smoother taps, sound in Mark mode, and a fresh board every time.
 
 • Smoother board — placing pieces and sweeping dots now keeps up with your finger, with none of the lag that could creep in as you played.
 • Mark mode has sound — sketching guesses now plays the same sound effects and taps as the real board, a little softer.
+• A fresh start — four times as many opening boards, so the app no longer greets you with the same puzzle, and the board you land on first is always a gentle one.
 • Polish and fixes throughout.
 
 Thanks for playing!
